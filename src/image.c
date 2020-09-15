@@ -1308,11 +1308,6 @@ free_image (struct frame *f, struct image *img)
 	XRenderFreePicture (FRAME_X_DISPLAY (f), img->mask_picture);
 #endif
 
-      /* Windows NT redefines 'free', but in this file, we need to
-	 avoid the redefinition.  */
-#ifdef WINDOWSNT
-#undef free
-#endif
       /* Free resources, then free IMG.  */
       img->type->free_img (f, img);
       xfree (img);
@@ -2526,8 +2521,7 @@ lookup_image (struct frame *f, Lisp_Object spec, int face_id)
 	      if (!NILP (bg))
 		{
 		  img->background
-		    = image_alloc_image_color (f, img, bg,
-					       FRAME_BACKGROUND_PIXEL (f));
+		    = image_alloc_image_color (f, img, bg, background);
 		  img->background_valid = 1;
 		}
 	    }
@@ -10041,25 +10035,6 @@ svg_load_image (struct frame *f, struct image *img, char *contents,
       }
 
     init_color_table ();
-
-    /* Handle alpha channel by combining the image with a background
-       color.  */
-    Emacs_Color background;
-    Lisp_Object specified_bg = image_spec_value (img->spec, QCbackground, NULL);
-    if (!STRINGP (specified_bg)
-	|| !FRAME_TERMINAL (f)->defined_color_hook (f,
-						    SSDATA (specified_bg),
-						    &background,
-						    false,
-						    false))
-      FRAME_TERMINAL (f)->query_frame_background_color (f, &background);
-
-    /* SVG pixmaps specify transparency in the last byte, so right
-       shift 8 bits to get rid of it, since emacs doesn't support
-       transparency.  */
-    background.red   >>= 8;
-    background.green >>= 8;
-    background.blue  >>= 8;
 
     /* This loop handles opacity values, since Emacs assumes
        non-transparent images.  Each pixel must be "flattened" by

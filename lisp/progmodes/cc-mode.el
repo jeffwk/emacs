@@ -1415,13 +1415,13 @@ Note that the style variables are always made local to the buffer."
 		       end))
 	  (c-literal-limits)))
        (end-literal-type (and end-limits
-                                      (c-literal-type end-limits)))
+			      (c-literal-type end-limits)))
        (beg-limits
 	(progn
 	  (goto-char beg)
 	  (c-literal-limits)))
        (beg-literal-type (and beg-limits
-                                      (c-literal-type beg-limits))))
+			      (c-literal-type beg-limits))))
 
     ;; It is possible the buffer change will include inserting a string quote.
     ;; This could have the effect of flipping the meaning of any following
@@ -1482,7 +1482,7 @@ Note that the style variables are always made local to the buffer."
 	   ((and
 	     (c-is-escaped end)
 	     (or (eq beg end) ; .... by inserting stuff between \ and \n?
-	      	 (c-will-be-unescaped beg end))) ;  ... by removing an odd number of \s?
+		 (c-will-be-unescaped beg end))) ;  ... by removing an odd number of \s?
 	    (goto-char (1+ end))) ; To after the NL which is being unescaped.
 	   (t
 	    (goto-char end)))
