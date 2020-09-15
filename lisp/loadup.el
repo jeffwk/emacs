@@ -170,7 +170,6 @@
 (load "cus-face")
 (load "faces")  ; after here, `defface' may be used.
 
-(load "button")
 
 ;; We don't want to store loaddefs.el in the repository because it is
 ;; a generated file; but it is required in order to compile the lisp files.
@@ -193,6 +192,7 @@
            definition-prefixes)
   (setq definition-prefixes new))
 
+(load "button")                  ;After loaddefs, because of define-minor-mode!
 (load "emacs-lisp/nadvice")
 (load "emacs-lisp/cl-preloaded")
 (load "obarray")        ;abbrev.el is implemented in terms of obarrays.
@@ -465,7 +465,7 @@ lost after dumping")))
         (eln-dest-dir (cadr (member "--eln-dest" command-line-args))))
     (when (and bin-dest-dir eln-dest-dir)
       (setq eln-dest-dir
-            (concat eln-dest-dir "eln-cache/" comp-native-path-postfix "/"))
+            (concat eln-dest-dir "native-lisp/" comp-native-version-dir "/"))
       (mapatoms (lambda (s)
                   (let ((f (symbol-function s)))
                     (when (subr-native-elisp-p f)

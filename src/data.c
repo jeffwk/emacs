@@ -875,14 +875,28 @@ SUBR must be a built-in function.  */)
 }
 
 DEFUN ("subr-native-elisp-p", Fsubr_native_elisp_p, Ssubr_native_elisp_p, 1, 1,
-       0, doc: /* Return t if the object is native compiled lisp function,
-nil otherwise.  */)
+       0, doc: /* Return t if the object is native compiled lisp
+function, nil otherwise.  */)
   (Lisp_Object object)
 {
   return SUBR_NATIVE_COMPILEDP (object) ? Qt : Qnil;
 }
 
+DEFUN ("subr-native-lambda-list", Fsubr_native_lambda_list,
+       Ssubr_native_lambda_list, 1, 1, 0,
+       doc: /* Return the lambda list for a native compiled lisp/d
+function or t otherwise.  */)
+  (Lisp_Object subr)
+{
+  CHECK_SUBR (subr);
+
+  return SUBR_NATIVE_COMPILED_DYNP (subr)
+    ? XSUBR (subr)->lambda_list[0]
+    : Qt;
+}
+
 #ifdef HAVE_NATIVE_COMP
+
 DEFUN ("subr-native-comp-unit", Fsubr_native_comp_unit,
        Ssubr_native_comp_unit, 1, 1, 0,
        doc: /* Return the native compilation unit.  */)
@@ -4028,6 +4042,7 @@ syms_of_data (void)
   defsubr (&Ssubr_name);
   defsubr (&Ssubr_native_elisp_p);
 #ifdef HAVE_NATIVE_COMP
+  defsubr (&Ssubr_native_lambda_list);
   defsubr (&Ssubr_native_comp_unit);
   defsubr (&Snative_comp_unit_file);
   defsubr (&Snative_comp_unit_set_file);

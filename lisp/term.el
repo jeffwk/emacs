@@ -241,9 +241,9 @@
 ;;		printf '\033AnSiTu %s\n' "$USER"
 ;;		printf '\033AnSiTc %s\n' "$PWD"
 ;;
-;;		cd()    { command cd    "$@"; printf '\033AnSiTc %s\n' "$PWD"; }
-;;		pushd() { command pushd "$@"; printf '\033AnSiTc %s\n' "$PWD"; }
-;;		popd()  { command popd  "$@"; printf '\033AnSiTc %s\n' "$PWD"; }
+;;		cd()    { command cd    "$@" && printf '\033AnSiTc %s\n' "$PWD"; }
+;;		pushd() { command pushd "$@" && printf '\033AnSiTc %s\n' "$PWD"; }
+;;		popd()  { command popd  "$@" && printf '\033AnSiTc %s\n' "$PWD"; }
 ;;
 ;;		# Use custom dircolors in term buffers.
 ;;		# eval $(dircolors $HOME/.emacs_dircolors)
@@ -4110,53 +4110,6 @@ see `expand-file-name' and `substitute-in-file-name'.  For completion see
   (term-dynamic-complete-filename))
 
 
-(defun term-dynamic-simple-complete (stub candidates)
-  "Dynamically complete STUB from CANDIDATES list.
-This function inserts completion characters at point by completing STUB from
-the strings in CANDIDATES.  A completions listing may be shown in a help buffer
-if completion is ambiguous.
-
-Returns nil if no completion was inserted.
-Returns `sole' if completed with the only completion match.
-Returns `shortest' if completed with the shortest of the completion matches.
-Returns `partial' if completed as far as possible with the completion matches.
-Returns `listed' if a completion listing was shown.
-
-See also `term-dynamic-complete-filename'."
-  (declare (obsolete completion-in-region "23.2"))
-  (let* ((completion-ignore-case nil)
-	 (completions (all-completions stub candidates)))
-    (cond ((null completions)
- 	   (message "No completions of %s" stub)
-	   nil)
- 	  ((= 1 (length completions))	; Gotcha!
- 	   (let ((completion (car completions)))
- 	     (if (string-equal completion stub)
- 		 (message "Sole completion")
- 	       (insert (substring completion (length stub)))
- 	       (message "Completed"))
-	     (when term-completion-addsuffix (insert " "))
-	     'sole))
- 	  (t				; There's no unique completion.
- 	   (let ((completion (try-completion stub candidates)))
- 	     ;; Insert the longest substring.
- 	     (insert (substring completion (length stub)))
- 	     (cond ((and term-completion-recexact term-completion-addsuffix
- 			 (string-equal stub completion)
- 			 (member completion completions))
- 		    ;; It's not unique, but user wants shortest match.
- 		    (insert " ")
- 		    (message "Completed shortest")
-		    'shortest)
- 		   ((or term-completion-autolist
- 			(string-equal stub completion))
- 		    ;; It's not unique, list possible completions.
- 		    (term-dynamic-list-completions completions)
-		    'listed)
- 		   (t
-		    (message "Partially completed")
-		    'partial)))))))
-
 (defun term-dynamic-list-filename-completions ()
   "List in help buffer possible completions of the filename at point."
   (interactive)
@@ -4186,7 +4139,7 @@ Typing SPC flushes the help buffer."
 		 (eq (window-buffer (posn-window (event-start first)))
 		     (get-buffer "*Completions*"))
 		 (memq (key-binding key)
-                       '(mouse-choose-completion choose-completion))))
+                       '(choose-completion))))
 	  ;; If the user does choose-completion with the mouse,
 	  ;; execute the command, then delete the completion window.
 	  (progn
@@ -4325,8 +4278,7 @@ well as the newer ports COM10 and higher."
                  ;; `prompt': The most recently used port is provided as
                  ;; the default value, which is used when the user
                  ;; simply presses return.
-                 (if (stringp h) (format "Serial port (default %s): " h)
-                   "Serial port: ")
+                 (format-prompt "Serial port" h)
                  ;; `directory': Most systems have their serial ports
                  ;; in the same directory, so start in the directory
                  ;; of the most recently used port, or in a reasonable
@@ -4341,8 +4293,7 @@ well as the newer ports COM10 and higher."
                  ;; serial port.
                  "")
               (read-from-minibuffer
-               (if (stringp h) (format "Serial port (default %s): " h)
-                 "Serial port: ")
+               (format-prompt "Serial port" h)
                nil nil nil '(file-name-history . 1) nil nil))))
     (if (or (null x) (and (stringp x) (zerop (length x))))
         (setq x h)
@@ -4364,7 +4315,7 @@ Try to be nice by providing useful defaults and history."
              (cond ((string= h serial-no-speed)
                     "Speed (default nil = set by port): ")
                    (h
-                    (format "Speed (default %s b/s): " h))
+                    (format-prompt "Speed" (format "%s b/s" h)))
                    (t
 		    (format "Speed (b/s): ")))
              nil nil nil '(history . 1) nil nil)))

@@ -134,16 +134,27 @@ the string of command switches used as the third argument of `diff'."
                               (file-name-directory default)
                             (dired-current-directory))
 			(dired-dwim-target-directory)))
-	  (defaults (dired-dwim-target-defaults (list current) target-dir)))
+	  (defaults (append
+                     (if (backup-file-name-p current)
+                         ;; This is a backup file -- put the other
+                         ;; main file, and the other backup files into
+                         ;; the `M-n' list.
+                         (delete (expand-file-name current)
+                                 (cons (expand-file-name
+                                        (file-name-sans-versions current))
+                                       (file-backup-file-names
+                                        (file-name-sans-versions current))))
+                       ;; Non-backup file -- use the backup files as
+                       ;; `M-n' candidates.
+                       (file-backup-file-names current))
+                     (dired-dwim-target-defaults (list current) target-dir))))
      (list
       (minibuffer-with-setup-hook
 	  (lambda ()
 	    (set (make-local-variable 'minibuffer-default-add-function) nil)
 	    (setq minibuffer-default defaults))
-	(read-file-name
-	 (format "Diff %s with%s: " current
-		 (if default (format " (default %s)" default) ""))
-	 target-dir default t))
+	(read-file-name (format-prompt "Diff %s with" default current)
+	                target-dir default t))
       (if current-prefix-arg
 	  (read-string "Options for diff: "
 		       (if (stringp diff-switches)
@@ -1536,16 +1547,12 @@ files matching `dired-omit-regexp'."
 
 ;;;###autoload
 (defun dired-remove-file (file)
+  "Remove entry FILE on each dired buffer.
+Note this doesn't delete FILE in the file system.
+See `dired-delete-file' in case you wish that."
   (dired-fun-in-all-buffers
    (file-name-directory file) (file-name-nondirectory file)
    #'dired-remove-entry file))
-
-(defun dired-remove-entry (file)
-  (save-excursion
-    (and (dired-goto-file file)
-	 (let (buffer-read-only)
-	   (delete-region (progn (beginning-of-line) (point))
-			  (line-beginning-position 2))))))
 
 ;;;###autoload
 (defun dired-relist-file (file)
@@ -1663,6 +1670,9 @@ rename them using `vc-rename-file'."
 
 ;;;###autoload
 (defun dired-rename-file (file newname ok-if-already-exists)
+  "Rename FILE to NEWNAME.
+Signal a `file-already-exists' error if a file NEWNAME already exists
+unless OK-IF-ALREADY-EXISTS is non-nil."
   (dired-handle-overwrite newname)
   (dired-maybe-create-dirs (file-name-directory newname))
   (if (and dired-vc-rename-file
@@ -1677,7 +1687,8 @@ rename them using `vc-rename-file'."
 	 (set-visited-file-name newname nil t)))
   (dired-remove-file file)
   ;; See if it's an inserted subdir, and rename that, too.
-  (dired-rename-subdir file newname))
+  (when (file-directory-p file)
+    (dired-rename-subdir file newname)))
 
 (defun dired-rename-subdir (from-dir to-dir)
   (setq from-dir (file-name-as-directory from-dir)

@@ -39,6 +39,7 @@
 
 (require 'mail-utils)
 (require 'rfc2047)
+(require 'auth-source)
 
 (require 'rmail-loaddefs)
 
@@ -416,20 +417,6 @@ A value of nil means don't highlight.  Uses the face `rmail-highlight'."
 The variable `rmail-highlighted-headers' specifies which headers."
   :group 'rmail-headers
   :version "22.1")
-
-;; This was removed in Emacs 23.1 with no notification, an unnecessary
-;; incompatible change.
-(defcustom rmail-highlight-face 'rmail-highlight
-  "Face used by Rmail for highlighting headers."
-  ;; Note that nil doesn't actually mean use the default face, it
-  ;; means use either bold or highlight. It's not worth fixing this
-  ;; now that this is obsolete.
-  :type '(choice (const :tag "Default" nil)
-		 face)
-  :group 'rmail-headers)
-(make-obsolete-variable 'rmail-highlight-face
-			"customize the face `rmail-highlight' instead."
-			"23.2")
 
 (defface rmail-header-name
   '((t (:inherit font-lock-function-name-face)))
@@ -1898,7 +1885,8 @@ interactively."
 		(when rmail-remote-password-required
 		  (setq got-password (not (rmail-have-password)))
 		  (setq supplied-password (rmail-get-remote-password
-					   (string-match "^imaps?" proto))))
+					   (string-match "^imaps?" proto)
+                                           user host)))
 	      ;; FIXME
 	      ;; The password is embedded.  Strip it out since movemail
 	      ;; does not really like it, in spite of the movemail spec.
@@ -1918,14 +1906,12 @@ interactively."
 
    ((string-match "^po:\\([^:]+\\)\\(:\\(.*\\)\\)?" file)
     (let (got-password supplied-password
-          ;; (proto "pop")
-	  ;; (user  (match-string 1 file))
-	  ;; (host  (match-string 3 file))
-          )
+	  (user (match-string 1 file))
+	  (host (match-string 3 file)))
 
       (when rmail-remote-password-required
 	(setq got-password (not (rmail-have-password)))
-	(setq supplied-password (rmail-get-remote-password nil)))
+	(setq supplied-password (rmail-get-remote-password nil user host)))
 
       (list file "pop" supplied-password got-password)))
 
@@ -3012,7 +2998,7 @@ using the coding system CODING."
 
 (defun rmail-highlight-headers ()
   "Highlight the headers specified by `rmail-highlighted-headers'.
-Uses the face specified by `rmail-highlight-face'."
+Uses the face `rmail-highlight'."
   (if rmail-highlighted-headers
       (save-excursion
 	(search-forward "\n\n" nil 'move)
@@ -3020,11 +3006,7 @@ Uses the face specified by `rmail-highlight-face'."
 	  (narrow-to-region (point-min) (point))
 	  (let ((case-fold-search t)
 		(inhibit-read-only t)
-		;; When rmail-highlight-face is removed, just
-		;; use 'rmail-highlight here.
-		(face (or rmail-highlight-face
-			  (if (face-differs-from-default-p 'bold)
-			      'bold 'highlight)))
+		(face 'rmail-highlight)
 		;; List of overlays to reuse.
 		(overlays rmail-overlay-list))
 	    (goto-char (point-min))
@@ -4479,15 +4461,30 @@ TEXT and INDENT are not used."
     (setq rmail-remote-password nil)
     (setq rmail-encoded-remote-password nil)))
 
-(defun rmail-get-remote-password (imap)
-  "Get the password for retrieving mail from a POP or IMAP server.  If none
-has been set, then prompt the user for one."
+(defun rmail-get-remote-password (imap user host)
+  "Get the password for retrieving mail from a POP or IMAP server.
+If none has been set, the password is found via auth-source. If
+you use ~/.authinfo as your auth-source backend, then put
+something like the following in that file:
+
+machine mymachine login myloginname password mypassword
+
+If auth-source search yields no result, prompt the user for the
+password."
   (when (not rmail-encoded-remote-password)
     (if (not rmail-remote-password)
-	(setq rmail-remote-password
-	      (read-passwd (if imap
-			       "IMAP password: "
-			     "POP password: "))))
+        (setq rmail-remote-password
+              (let ((found (nth 0 (auth-source-search
+                                   :max 1 :user user :host host
+                                   :require '(:secret)))))
+                (if found
+                    (let ((secret (plist-get found :secret)))
+                      (if (functionp secret)
+                          (funcall secret)
+                        secret))
+                  (read-passwd (if imap
+                                   "IMAP password: "
+                                 "POP password: "))))))
     (rmail-set-remote-password rmail-remote-password)
     (setq rmail-remote-password nil))
   (rmail-encode-string rmail-encoded-remote-password (emacs-pid)))

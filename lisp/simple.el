@@ -1881,22 +1881,20 @@ to get different commands to edit and resubmit."
 	   '(metadata
 	     (annotation-function . read-extended-command--annotation)
 	     (category . command))
-         (let ((pred
-                (if (memq action '(nil t))
-                    ;; Exclude obsolete commands from completions.
-                    (lambda (sym)
-                      (and (funcall pred sym)
-                           (or (equal string (symbol-name sym))
-                               (not (get sym 'byte-obsolete-info)))))
-                  pred)))
-           (complete-with-action action obarray string pred))))
+         (complete-with-action action obarray string pred)))
      #'commandp t nil 'extended-command-history)))
 
 (defun read-extended-command--annotation (command-name)
-  (let* ((function (and (stringp command-name) (intern-soft command-name)))
-         (binding (where-is-internal function overriding-local-map t)))
-    (when (and binding (not (stringp binding)))
-      (format " (%s)" (key-description binding)))))
+  (let* ((fun (and (stringp command-name) (intern-soft command-name)))
+         (binding (where-is-internal fun overriding-local-map t))
+         (obsolete (get fun 'byte-obsolete-info))
+         (alias (symbol-function fun)))
+    (cond ((symbolp alias)
+           (format " (%s)" alias))
+          (obsolete
+           (format " (%s)" (car obsolete)))
+          ((and binding (not (stringp binding)))
+           (format " (%s)" (key-description binding))))))
 
 (defcustom suggest-key-bindings t
   "Non-nil means show the equivalent key-binding when M-x command has one.
@@ -2129,11 +2127,9 @@ See also `minibuffer-history-case-insensitive-variables'."
   (interactive
    (let* ((enable-recursive-minibuffers t)
 	  (regexp (read-from-minibuffer
-                   (format "Previous element matching regexp%s: "
-                           (if minibuffer-history-search-history
-                               (format " (default %s)"
-                                       (car minibuffer-history-search-history))
-                             ""))
+                   (format-prompt "Previous element matching regexp"
+                                  (and minibuffer-history-search-history
+                                       (car minibuffer-history-search-history)))
 		   nil minibuffer-local-map nil
 		   'minibuffer-history-search-history
 		   (car minibuffer-history-search-history))))
@@ -2754,7 +2750,8 @@ Contrary to `undo', this will not redo a previous undo."
   (let ((undo-no-redo t)) (undo arg)))
 
 (defun undo-redo (&optional arg)
-  "Undo the last ARG undos."
+  "Undo the last ARG undos, i.e., redo the last ARG changes.
+Interactively, ARG is the prefix numeric argument and defaults to 1."
   (interactive "*p")
   (cond
    ((not (undo--last-change-was-undo-p buffer-undo-list))
@@ -4374,7 +4371,7 @@ Also, delete any process that is exited or signaled."
 		    ((thread-name (process-thread p)))
 		    (t "--")))
 		  (cmd
-		   (if (memq type '(network serial))
+		   (if (memq type '(network serial pipe))
 		       (let ((contact (process-contact p t t)))
 			 (if (eq type 'network)
 			     (format "(%s %s)"
@@ -6122,8 +6119,6 @@ Does not set point.  Does nothing if mark ring is empty."
     (pop mark-ring))
   (deactivate-mark))
 
-(define-obsolete-function-alias
-  'exchange-dot-and-mark 'exchange-point-and-mark "23.3")
 (defun exchange-point-and-mark (&optional arg)
   "Put the mark where point is now, and point where the mark is now.
 This command works even when the mark is not active,
@@ -8314,7 +8309,7 @@ makes it easier to edit it."
   (interactive
    (let* ((default-var (variable-at-point))
           (var (if (custom-variable-p default-var)
-		   (read-variable (format "Set variable (default %s): " default-var)
+		   (read-variable (format-prompt "Set variable" default-var)
 				  default-var)
 		 (read-variable "Set variable: ")))
 	  (minibuffer-help-form `(describe-variable ',var))
@@ -8409,18 +8404,6 @@ Called with three arguments (BEG END TEXT), it should replace the text
 between BEG and END with TEXT.  Expected to be set buffer-locally
 in the *Completions* buffer.")
 
-(defvar completion-base-size nil
-  "Number of chars before point not involved in completion.
-This is a local variable in the completion list buffer.
-It refers to the chars in the minibuffer if completing in the
-minibuffer, or in `completion-reference-buffer' otherwise.
-Only characters in the field at point are included.
-
-If nil, Emacs determines which part of the tail end of the
-buffer's text is involved in completion by comparing the text
-directly.")
-(make-obsolete-variable 'completion-base-size 'completion-base-position "23.2")
-
 (defun delete-completion-window ()
   "Delete the completion list window.
 Go to the window from which completion was requested."
@@ -8474,7 +8457,6 @@ If EVENT, use EVENT's position to determine the starting position."
   (run-hooks 'mouse-leave-buffer-hook)
   (with-current-buffer (window-buffer (posn-window (event-start event)))
     (let ((buffer completion-reference-buffer)
-          (base-size completion-base-size)
           (base-position completion-base-position)
           (insert-function completion-list-insert-choice-function)
           (choice
@@ -8501,10 +8483,6 @@ If EVENT, use EVENT's position to determine the starting position."
         (choose-completion-string
          choice buffer
          (or base-position
-             (when base-size
-               ;; Someone's using old completion code that doesn't know
-               ;; about base-position yet.
-               (list (+ base-size (field-beginning))))
              ;; If all else fails, just guess.
              (list (choose-completion-guess-base-position choice)))
          insert-function)))))
@@ -8531,10 +8509,6 @@ If EVENT, use EVENT's position to determine the starting position."
         (setq len (1- len))
         (forward-char 1))
       (point))))
-
-(defun choose-completion-delete-max-match (string)
-  (declare (obsolete choose-completion-guess-base-position "23.2"))
-  (delete-region (choose-completion-guess-base-position string) (point)))
 
 (defvar choose-completion-string-functions nil
   "Functions that may override the normal insertion of a completion choice.
@@ -8563,13 +8537,6 @@ back on `completion-list-insert-choice-function' when nil."
   ;; If BUFFER is the minibuffer, exit the minibuffer
   ;; unless it is reading a file name and CHOICE is a directory,
   ;; or completion-no-auto-exit is non-nil.
-
-  ;; Some older code may call us passing `base-size' instead of
-  ;; `base-position'.  It's difficult to make any use of `base-size',
-  ;; so we just ignore it.
-  (unless (consp base-position)
-    (message "Obsolete `base-size' passed to choose-completion-string")
-    (setq base-position nil))
 
   (let* ((buffer (or buffer completion-reference-buffer))
 	 (mini-p (minibufferp buffer)))
@@ -8626,8 +8593,7 @@ Type \\<completion-list-mode-map>\\[choose-completion] in the completion list\
  to select the completion near point.
 Or click to select one with the mouse.
 
-\\{completion-list-mode-map}"
-  (set (make-local-variable 'completion-base-size) nil))
+\\{completion-list-mode-map}")
 
 (defun completion-list-mode-finish ()
   "Finish setup of the completions buffer.
@@ -8664,14 +8630,11 @@ Called from `temp-buffer-show-hook'."
           (if minibuffer-completing-file-name
               (file-name-as-directory
                (expand-file-name
-                (buffer-substring (minibuffer-prompt-end)
-                                  (- (point) (or completion-base-size 0))))))))
+                (buffer-substring (minibuffer-prompt-end) (point)))))))
     (with-current-buffer standard-output
-      (let ((base-size completion-base-size) ;Read before killing localvars.
-            (base-position completion-base-position)
+      (let ((base-position completion-base-position)
             (insert-fun completion-list-insert-choice-function))
         (completion-list-mode)
-        (set (make-local-variable 'completion-base-size) base-size)
         (set (make-local-variable 'completion-base-position) base-position)
         (set (make-local-variable 'completion-list-insert-choice-function)
 	     insert-fun))

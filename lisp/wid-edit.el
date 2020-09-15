@@ -3161,6 +3161,16 @@ It reads a file name from an editable text field."
   :completions (completion-table-case-fold
                 #'completion-file-name-table
                 (not read-file-name-completion-ignore-case))
+  :match (lambda (widget value)
+           (and (stringp value)
+                (or (not (widget-get widget :must-match))
+                    (file-exists-p value))))
+  :validate (lambda (widget)
+              (let ((value (widget-value widget)))
+                (unless (widget-apply widget :match value)
+                  (widget-put widget
+                              :error (format "File %s does not exist" value))
+                  widget)))
   :prompt-value 'widget-file-prompt-value
   :format "%{%t%}: %v"
   ;; Doesn't work well with terminating newline.
@@ -3172,11 +3182,10 @@ It reads a file name from an editable text field."
   (abbreviate-file-name
    (if unbound
        (read-file-name prompt)
-     (let ((prompt2 (format "%s (default %s): " prompt value))
-	   (dir (file-name-directory value))
+     (let ((dir (file-name-directory value))
 	   (file (file-name-nondirectory value))
 	   (must-match (widget-get widget :must-match)))
-       (read-file-name prompt2 dir nil must-match file)))))
+       (read-file-name (format-prompt prompt value) dir nil must-match file)))))
 
 ;;;(defun widget-file-action (widget &optional event)
 ;;;  ;; Read a file name from the minibuffer.
@@ -3288,10 +3297,10 @@ It reads a directory name from an editable text field."
   "Read coding-system from minibuffer."
   (if (widget-get widget :base-only)
       (intern
-       (completing-read (format "%s (default %s): " prompt value)
+       (completing-read (format-prompt prompt value)
 			(mapcar #'list (coding-system-list t)) nil nil nil
 			coding-system-history))
-      (read-coding-system (format "%s (default %s): " prompt value) value)))
+      (read-coding-system (format-prompt prompt value) value)))
 
 (defun widget-coding-system-action (widget &optional event)
   (let ((answer

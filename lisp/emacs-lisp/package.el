@@ -2206,32 +2206,13 @@ If some packages are not installed propose to install them."
 
 (defun package--delete-directory (dir)
   "Delete DIR recursively.
-In Windows move .eln and .eln.old files that can not be deleted
-to `package-user-dir'."
-  (cond ((eq 'windows-nt system-type)
-         (let ((retry t))
-           (while retry
-             (setf retry nil)
-             (condition-case err
-                 (delete-directory dir t)
-               (file-error
-                (cl-destructuring-bind (_ reason1 reason2 filename) err
-                  (if (and (string= "Removing old name" reason1)
-                           (string= "Permission denied" reason2)
-                           (string-prefix-p (expand-file-name package-user-dir)
-                                            filename)
-                           (or (string-suffix-p ".eln" filename)
-                               (string-suffix-p ".eln.old" filename)))
-                      (progn
-                        (rename-file filename
-                                     (make-temp-file-internal
-                                      (concat package-user-dir
-                                              (file-name-base filename))
-                                      nil ".eln.old" nil)
-                                     t)
-                        (setf retry t))
-                    (signal (car err) (cdr err)))))))))
-        (t (delete-directory dir t))))
+Clean-up the corresponding .eln files if Emacs is native
+compiled."
+  (when (boundp 'comp-ctxt)
+    (cl-loop
+     for file in (directory-files-recursively dir ".el\\'")
+     do (comp-clean-up-stale-eln (comp-el-to-eln-filename file))))
+  (delete-directory dir t))
 
 (defun package-delete (pkg-desc &optional force nosave)
   "Delete package PKG-DESC.
@@ -2367,10 +2348,7 @@ will be deleted."
          (setq guess nil))
        (setq packages (mapcar #'symbol-name packages))
        (let ((val
-              (completing-read (if guess
-                                   (format "Describe package (default %s): "
-                                           guess)
-                                 "Describe package: ")
+              (completing-read (format-prompt "Describe package" guess)
                                packages nil t nil nil (when guess
                                                         (symbol-name guess)))))
          (list (and (> (length val) 0) (intern val)))))))

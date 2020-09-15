@@ -58,11 +58,15 @@ Check that the resulting binaries do not differ."
       (load (concat comp-src "c") nil nil t t))
     (should-not (subr-native-elisp-p (symbol-function #'native-compile)))
     (message "Compiling stage1...")
-    (let ((comp1-eln (native-compile comp1-src)))
+    (let* ((t0 (current-time))
+           (comp1-eln (native-compile comp1-src)))
+      (message "Done in %d secs" (float-time (time-since t0)))
       (load comp1-eln nil nil t t)
       (should (subr-native-elisp-p (symbol-function 'native-compile)))
       (message "Compiling stage2...")
-      (let ((comp2-eln (native-compile comp2-src)))
+      (let ((t0 (current-time))
+            (comp2-eln (native-compile comp2-src)))
+        (message "Done in %d secs" (float-time (time-since t0)))
         (message "Comparing %s %s" comp1-eln comp2-eln)
         (should (= (call-process "cmp" nil nil nil comp1-eln comp2-eln) 0))))))
 
@@ -322,7 +326,9 @@ Check that the resulting binaries do not differ."
 (ert-deftest comp-tests-doc ()
   (should (string= (documentation #'comp-tests-doc-f)
                    "A nice docstring"))
-  (should (string-match "\\.*.eln\\'" (symbol-file #'comp-tests-doc-f))))
+  ;; Check a preloaded function, we can't use `comp-tests-doc-f' now
+  ;; as this is loaded manually with no .elc.
+  (should (string-match "\\.*.elc\\'" (symbol-file #'error))))
 
 (ert-deftest comp-test-interactive-form ()
   (should (equal (interactive-form #'comp-test-interactive-form0-f)
@@ -579,6 +585,13 @@ https://lists.gnu.org/archive/html/bug-gnu-emacs/2020-03/msg00914.html."
                  (func-arity #'comp-tests-ffuncall-callee-rest-dyn-f)))
   (should (equal '(2 . many)
                  (func-arity #'comp-tests-ffuncall-callee-opt-rest-dyn-f))))
+
+(ert-deftest comp-tests-dynamic-help-arglist ()
+  "Test `help-function-arglist' works on lisp/d (bug#42572)."
+  (should (equal (help-function-arglist
+                  (symbol-function #'comp-tests-ffuncall-callee-opt-rest-dyn-f)
+                  t)
+                 '(a b &optional c &rest d))))
 
 (ert-deftest comp-tests-cl-macro-exp ()
   "Verify CL macro expansion (bug#42088)."
