@@ -25646,8 +25646,10 @@ display_mode_element (struct it *it, int depth, int field_width, int precision,
 		    /* Non-ASCII characters in SPEC should cause mode-line
 		       element be displayed as a multibyte string.  */
 		    ptrdiff_t nbytes = strlen (spec);
-		    if (multibyte_chars_in_text ((const unsigned char *)spec,
-						 nbytes) != nbytes)
+		    ptrdiff_t nchars, mb_nbytes;
+		    parse_str_as_multibyte ((const unsigned char *)spec, nbytes,
+					    &nchars, &mb_nbytes);
+		    if (!(nbytes == nchars || nbytes != mb_nbytes))
 		      multibyte = true;
 
 		    switch (mode_line_target)
@@ -34846,8 +34848,7 @@ and is used only on frames for which no explicit name has been set
      Oracle Developer Studio 12.6.  */
   Lisp_Object icon_title_name_format
     = pure_list (empty_unibyte_string,
-		 intern_c_string ("invocation-name"),
-		 build_pure_c_string ("@"),
+		 build_pure_c_string ("%b - GNU Emacs at "),
 		 intern_c_string ("system-name"));
   Vicon_title_format
     = Vframe_title_format

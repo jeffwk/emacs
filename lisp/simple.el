@@ -2755,7 +2755,7 @@ Interactively, ARG is the prefix numeric argument and defaults to 1."
   (interactive "*p")
   (cond
    ((not (undo--last-change-was-undo-p buffer-undo-list))
-    (user-error "No undo to undo"))
+    (user-error "No undone changes to redo"))
    (t
     (let* ((ul buffer-undo-list)
            (new-ul
@@ -7805,11 +7805,17 @@ a specialization of overwrite mode, entered by setting the
 
 Line numbers do not appear for very large buffers and buffers
 with very long lines; see variables `line-number-display-limit'
-and `line-number-display-limit-width'."
+and `line-number-display-limit-width'.
+
+See `mode-line-position-line-format' for how this number is
+presented."
   :init-value t :global t :group 'mode-line)
 
 (define-minor-mode column-number-mode
-  "Toggle column number display in the mode line (Column Number mode)."
+  "Toggle column number display in the mode line (Column Number mode).
+
+See `mode-line-position-column-format' for how this number is
+presented."
   :global t :group 'mode-line)
 
 (define-minor-mode size-indication-mode
