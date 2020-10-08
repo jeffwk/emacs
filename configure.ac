@@ -187,7 +187,8 @@ dnl It is important that variables on the RHS not be expanded here,
 dnl hence the single quotes.  This is per the GNU coding standards, see
 dnl (autoconf) Installation Directory Variables
 dnl See also epaths.h below.
-lispdir='${datadir}/emacs/${version}/lisp'
+lispdirrel='${version}/lisp'
+lispdir='${datadir}/emacs/'${lispdirrel}
 standardlisppath='${lispdir}'
 locallisppath='${datadir}/emacs/${version}/site-lisp:'\
 '${datadir}/emacs/site-lisp'
@@ -453,7 +454,7 @@ OPTION_DEFAULT_ON([cairo],[don't compile with Cairo drawing])
 OPTION_DEFAULT_ON([xml2],[don't compile with XML parsing support])
 OPTION_DEFAULT_OFF([imagemagick],[compile with ImageMagick image support])
 OPTION_DEFAULT_ON([native-image-api], [don't use native image APIs (GDI+ on Windows)])
-OPTION_DEFAULT_IFAVAILABLE([json], [don't compile with native JSON support])
+OPTION_DEFAULT_IFAVAILABLE([json], [compile with native JSON support])
 
 OPTION_DEFAULT_ON([xft],[don't use XFT for anti aliased fonts])
 OPTION_DEFAULT_ON([harfbuzz],[don't use HarfBuzz for text shaping])
@@ -1912,6 +1913,7 @@ if test "${with_ns}" != no; then
   # so avoid NS_IMPL_COCOA if macuvs.h is absent.
   # Even a headless Emacs can build macuvs.h, so this should let you bootstrap.
   if test "${opsys}" = darwin && test -f "$srcdir/src/macuvs.h"; then
+     lispdirrel=Contents/Resources/lisp
      NS_IMPL_COCOA=yes
      ns_appdir=`pwd`/nextstep/Emacs.app
      ns_appbindir=${ns_appdir}/Contents/MacOS
@@ -3852,15 +3854,25 @@ AC_DEFUN([libgccjit_smoke_test], [
 
 AC_DEFUN([libgccjit_not_found], [
   AC_MSG_ERROR([elisp native compiler requested but libgccjit not found.
+Please try installing libgccjit or similar package.
 If you are sure you want Emacs compiled without elisp native compiler, pass
   --without-nativecomp
+to configure.])])
+
+AC_DEFUN([libgccjit_dev_not_found], [
+  AC_MSG_ERROR([elisp native compiler requested but libgccjit header files were
+not found.
+Please try installing libgccjit-dev or similar package.
+If you are sure you want Emacs compiled without elisp native compiler, pass
+--without-nativecomp
 to configure.])])
 
 AC_DEFUN([libgccjit_broken], [
   AC_MSG_ERROR([Installed libgccjit has failed passing the smoke test.
 You can verify it yourself compiling:
 <https://gcc.gnu.org/onlinedocs/jit/intro/tutorial01.html>.
-Please report the issue to your distribution.
+Please report the issue to your distribution if libgccjit was installed through
+that.
 Here instructions on how to compile and install libgccjit from source:
 <https://gcc.gnu.org/wiki/JIT>.])])
 
@@ -3873,10 +3885,13 @@ if test "${with_nativecomp}" != "no"; then
     if test "${HAVE_ZLIB}" = no; then
        AC_MSG_ERROR(['--with-nativecomp' requires zlib])
     fi
+    # Check if libgccjit is available.
+    AC_CHECK_LIB(gccjit, gcc_jit_context_acquire, [], [libgccjit_not_found])
+    AC_CHECK_HEADERS(libgccjit.h, [], [libgccjit_dev_not_found])
     emacs_save_LIBS=$LIBS
     LIBS="-lgccjit"
-    AC_RUN_IFELSE([libgccjit_smoke_test], [], [libgccjit_broken],
-      [AC_LINK_IFELSE([libgccjit_smoke_test], [], [libgccjit_not_found])])
+    # Check if libgccjit really works.
+    AC_RUN_IFELSE([libgccjit_smoke_test], [], [libgccjit_broken])
     LIBS=$emacs_save_LIBS
     HAVE_NATIVE_COMP=yes
     # mingw32 loads the library dynamically.
@@ -3884,7 +3899,7 @@ if test "${with_nativecomp}" != "no"; then
       LIBGCCJIT_LIB="-lgccjit -ldl"
     fi
     NEED_DYNLIB=yes
-    AC_DEFINE(HAVE_NATIVE_COMP, 1, [Define to 1 if you have the libgccjit library (-lgccjit).])
+    AC_DEFINE(HAVE_NATIVE_COMP, 1, [Define to 1 if native compiler is available.])
 fi
 AC_DEFINE_UNQUOTED(NATIVE_ELISP_SUFFIX, ".eln",
   [System extension for native compiled elisp])
@@ -5401,6 +5416,7 @@ AC_SUBST(sharedstatedir)
 AC_SUBST(libexecdir)
 AC_SUBST(mandir)
 AC_SUBST(infodir)
+AC_SUBST(lispdirrel)
 AC_SUBST(lispdir)
 AC_SUBST(standardlisppath)
 AC_SUBST(locallisppath)

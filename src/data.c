@@ -88,12 +88,6 @@ XOBJFWD (lispfwd a)
 }
 
 static void
-CHECK_SUBR (Lisp_Object x)
-{
-  CHECK_TYPE (SUBRP (x), Qsubrp, x);
-}
-
-static void
 set_blv_found (struct Lisp_Buffer_Local_Value *blv, int found)
 {
   eassert (found == !EQ (blv->defcell, blv->valcell));
@@ -780,6 +774,13 @@ DEFUN ("fset", Ffset, Sfset, 2, 2, 0,
     Fput (symbol, Qautoload, XCDR (function));
 
   eassert (valid_lisp_object_p (definition));
+
+#ifdef HAVE_NATIVE_COMP
+  if (comp_enable_subr_trampolines
+      && SUBRP (function)
+      && !SUBR_NATIVE_COMPILEDP (function))
+    CALLN (Ffuncall, Qcomp_subr_trampoline_install, symbol);
+#endif
 
   set_symbol_function (symbol, definition);
 

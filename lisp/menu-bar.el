@@ -333,6 +333,8 @@
 
     (bindings--define-key menu [tags-continue]
       '(menu-item "Continue Tags Search" fileloop-continue
+                  :enable (and (featurep 'fileloop)
+                               (not (eq fileloop--operate-function 'ignore)))
                   :help "Continue last tags search operation"))
     (bindings--define-key menu [tags-srch]
       '(menu-item "Search Tagged Files..." tags-search
@@ -382,6 +384,8 @@
   (let ((menu (make-sparse-keymap "Replace")))
     (bindings--define-key menu [tags-repl-continue]
       '(menu-item "Continue Replace" fileloop-continue
+                  :enable (and (featurep 'fileloop)
+                               (not (eq fileloop--operate-function 'ignore)))
                   :help "Continue last tags replace operation"))
     (bindings--define-key menu [tags-repl]
       '(menu-item "Replace in Tagged Files..." tags-query-replace
@@ -667,7 +671,7 @@ PROPS are additional properties."
                                         &rest body)
   "Define a menu-bar toggle command.
 See `menu-bar-make-toggle-command', for which this is a
-compatability wrapper.  BODY is passed in as SETTING-SEXP in that macro."
+compatibility wrapper.  BODY is passed in as SETTING-SEXP in that macro."
   (declare (obsolete menu-bar-make-toggle-command "28.1"))
   `(menu-bar-make-toggle-command ,command ,variable ,item-name ,message ,help
                                  ,(and body

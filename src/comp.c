@@ -4015,7 +4015,7 @@ static Lisp_Object loadsearch_re_list;
 
 DEFUN ("comp-el-to-eln-filename", Fcomp_el_to_eln_filename,
        Scomp_el_to_eln_filename, 1, 2, 0,
-       doc: /* Given a source file return the corresponding .eln true filename.
+       doc: /* Given a source FILENAME return the corresponding .eln filename.
 If BASE-DIR is nil use the first entry in `comp-eln-load-path'.  */)
   (Lisp_Object filename, Lisp_Object base_dir)
 {
@@ -4050,27 +4050,15 @@ If BASE-DIR is nil use the first entry in `comp-eln-load-path'.  */)
      As installing .eln files compiled during the build changes their
      absolute path we need an hashing mechanism that is not sensitive
      to that.  For this we replace if match PATH_DUMPLOADSEARCH or
-     PATH_LOADSEARCH with '//' before generating the hash.  */
+     *PATH_REL_LOADSEARCH with '//' before computing the hash.  */
 
   if (NILP (loadsearch_re_list))
     {
-      Lisp_Object sys_re;
-#ifdef __APPLE__
-      /* On MacOS we relax the match on PATH_LOADSEARCH making
-	 everything before ".app/" a wildcard.  This to obtain a
-	 self-contained Emacs.app (bug#43532).  */
-      char *c;
-      if ((c = strstr (PATH_LOADSEARCH, ".app/")))
-	sys_re =
-	  concat2 (build_string ("\\`[[:ascii:]]+"),
-		   Fregexp_quote (build_string (c)));
-      else
-	sys_re = Fregexp_quote (build_string (PATH_LOADSEARCH));
-#else
-      sys_re = Fregexp_quote (build_string (PATH_LOADSEARCH));
-#endif
+      Lisp_Object sys_re =
+	concat2 (build_string ("\\`[[:ascii:]]+"),
+		 Fregexp_quote (build_string ("/" PATH_REL_LOADSEARCH "/")));
       loadsearch_re_list =
-	list2 (sys_re, Fregexp_quote (build_string (PATH_DUMPLOADSEARCH)));
+	list2 (sys_re, Fregexp_quote (build_string (PATH_DUMPLOADSEARCH "/")));
     }
 
   Lisp_Object lds_re_tail = loadsearch_re_list;
@@ -4092,14 +4080,62 @@ If BASE-DIR is nil use the first entry in `comp-eln-load-path'.  */)
 		      separator);
   Lisp_Object hash = concat3 (path_hash, separator, content_hash);
   filename = concat3 (filename, hash, build_string (NATIVE_ELISP_SUFFIX));
+
+  /* If base_dir was not specified search inside Vcomp_eln_load_path
+     for the first directory where we have write access.  */
   if (NILP (base_dir))
-    base_dir = XCAR (Vcomp_eln_load_path);
+    {
+      Lisp_Object eln_load_paths = Vcomp_eln_load_path;
+      FOR_EACH_TAIL (eln_load_paths)
+	if (!NILP (Ffile_writable_p (XCAR (eln_load_paths))))
+	  {
+	    base_dir = XCAR (eln_load_paths);
+	    break;
+	  }
+      /* If we can't find it return Nil.  */
+      if (NILP (base_dir))
+	return Qnil;
+    }
 
   if (!file_name_absolute_p (SSDATA (base_dir)))
     base_dir = Fexpand_file_name (base_dir, Vinvocation_directory);
 
   return Fexpand_file_name (filename,
 			    concat2 (base_dir, Vcomp_native_version_dir));
+}
+
+DEFUN ("comp--install-trampoline", Fcomp__install_trampoline,
+       Scomp__install_trampoline, 2, 2, 0,
+       doc: /* Install a TRAMPOLINE for primitive SUBR-NAME.  */)
+  (Lisp_Object subr_name, Lisp_Object trampoline)
+{
+  CHECK_SYMBOL (subr_name);
+  CHECK_SUBR (trampoline);
+  Lisp_Object orig_subr = Fsymbol_function (subr_name);
+  CHECK_SUBR (orig_subr);
+
+  /* FIXME: add a post dump load trampoline machinery to remove this
+     check.  */
+  if (will_dump_p ())
+    signal_error ("Trying to advice unexpected primitive before dumping",
+		  subr_name);
+
+  Lisp_Object subr_l = Vcomp_subr_list;
+  ptrdiff_t i = ARRAYELTS (helper_link_table);
+  FOR_EACH_TAIL (subr_l)
+    {
+      Lisp_Object subr = XCAR (subr_l);
+      if (EQ (subr, orig_subr))
+	{
+	  freloc.link_table[i] = XSUBR (trampoline)->function.a0;
+	  Fputhash (subr_name, Qt, Vcomp_installed_trampolines_h);
+	  return Qt;
+	}
+      i++;
+    }
+    signal_error ("Trying to install trampoline for non existent subr",
+		  subr_name);
+    return Qnil;
 }
 
 DEFUN ("comp--init-ctxt", Fcomp__init_ctxt, Scomp__init_ctxt,
@@ -4329,13 +4365,13 @@ restore_sigmask (void)
 DEFUN ("comp--compile-ctxt-to-file", Fcomp__compile_ctxt_to_file,
        Scomp__compile_ctxt_to_file,
        1, 1, 0,
-       doc: /* Compile as native code the current context to file.  */)
-  (Lisp_Object file_name)
+       doc: /* Compile as native code the current context to file FILENAME.  */)
+  (Lisp_Object filename)
 {
   load_gccjit_if_necessary (true);
 
-  CHECK_STRING (file_name);
-  Lisp_Object base_name = Fsubstring (file_name, Qnil, make_fixnum (-4));
+  CHECK_STRING (filename);
+  Lisp_Object base_name = Fsubstring (filename, Qnil, make_fixnum (-4));
 
   gcc_jit_context_set_int_option (comp.ctxt,
 				  GCC_JIT_INT_OPTION_OPTIMIZATION_LEVEL,
@@ -4407,16 +4443,16 @@ DEFUN ("comp--compile-ctxt-to-file", Fcomp__compile_ctxt_to_file,
   if (err)
     xsignal3 (Qnative_ice,
 	      build_string ("failed to compile"),
-	      file_name,
+	      filename,
 	      build_string (err));
 
-  CALL1I (comp-clean-up-stale-eln, file_name);
-  CALL2I (comp-delete-or-replace-file, file_name, tmp_file);
+  CALL1I (comp-clean-up-stale-eln, filename);
+  CALL2I (comp-delete-or-replace-file, filename, tmp_file);
 
   if (!noninteractive)
     unbind_to (count, Qnil);
 
-  return file_name;
+  return filename;
 }
 
 DEFUN ("comp-libgccjit-version", Fcomp_libgccjit_version,
@@ -4985,7 +5021,7 @@ file_in_eln_sys_dir (Lisp_Object filename)
 /* Load related routines.  */
 DEFUN ("native-elisp-load", Fnative_elisp_load, Snative_elisp_load, 1, 2, 0,
        doc: /* Load native elisp code FILENAME.
-	       LATE_LOAD has to be non nil when loading for deferred
+	       LATE_LOAD has to be non-nil when loading for deferred
 	       compilation.  */)
   (Lisp_Object filename, Lisp_Object late_load)
 {
@@ -5034,7 +5070,7 @@ DEFUN ("native-elisp-load", Fnative_elisp_load, Snative_elisp_load, 1, 2, 0,
 DEFUN ("native-comp-available-p", Fnative_comp_available_p,
        Snative_comp_available_p, 0, 0, 0,
        doc: /* Returns t if native compilation of Lisp files is available in
-this instance of Emacs. */)
+this instance of Emacs, nil otherwise.  */)
   (void)
 {
 #ifdef HAVE_NATIVE_COMP
@@ -5119,6 +5155,7 @@ native compiled one.  */);
   DEFSYM (Qlate, "late");
   DEFSYM (Qlambda_fixup, "lambda-fixup");
   DEFSYM (Qgccjit, "gccjit");
+  DEFSYM (Qcomp_subr_trampoline_install, "comp-subr-trampoline-install")
 
   /* To be signaled by the compiler.  */
   DEFSYM (Qnative_compiler_error, "native-compiler-error");
@@ -5162,6 +5199,7 @@ native compiled one.  */);
 
   defsubr (&Scomp_el_to_eln_filename);
   defsubr (&Scomp_native_driver_options_effective_p);
+  defsubr (&Scomp__install_trampoline);
   defsubr (&Scomp__init_ctxt);
   defsubr (&Scomp__release_ctxt);
   defsubr (&Scomp__compile_ctxt_to_file);
@@ -5222,6 +5260,15 @@ The last directory of this list is assumed to be the system one.  */);
      `invocation-directory' is still unset, will be fixed up during
      dump reload.  */
   Vcomp_eln_load_path = Fcons (build_string ("../native-lisp/"), Qnil);
+
+  DEFVAR_BOOL ("comp-enable-subr-trampolines", comp_enable_subr_trampolines,
+	       doc: /* When non-nil enable trampoline synthesis
+		       triggerd by `fset' making primitives
+		       redefinable effectivelly.  */);
+
+  DEFVAR_LISP ("comp-installed-trampolines-h", Vcomp_installed_trampolines_h,
+	       doc: /* Hash table subr-name -> bool.  */);
+  Vcomp_installed_trampolines_h = CALLN (Fmake_hash_table);
 
 #endif /* #ifdef HAVE_NATIVE_COMP */
 

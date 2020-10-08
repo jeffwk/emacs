@@ -2982,6 +2982,12 @@ CHECK_INTEGER (Lisp_Object x)
 {
   CHECK_TYPE (INTEGERP (x), Qnumberp, x);
 }
+
+INLINE void
+CHECK_SUBR (Lisp_Object x)
+{
+  CHECK_TYPE (SUBRP (x), Qsubrp, x);
+}
 
 
 /* If we're not dumping using the legacy dumper and we might be using
@@ -4424,7 +4430,7 @@ extern bool display_arg;
 extern Lisp_Object decode_env_path (const char *, const char *, bool);
 extern Lisp_Object empty_unibyte_string, empty_multibyte_string;
 extern AVOID terminate_due_to_signal (int, int);
-extern void set_invocation_vars (char *argv0, char const *original_pwd);
+extern void init_vars_for_load (char *, char const *);
 #ifdef WINDOWSNT
 extern Lisp_Object Vlibrary_cache;
 #endif
@@ -4728,6 +4734,7 @@ void syms_of_dbusbind (void);
 extern bool profiler_memory_running;
 extern void malloc_probe (size_t);
 extern void syms_of_profiler (void);
+
 
 #ifdef DOS_NT
 /* Defined in msdos.c, w32.c.  */

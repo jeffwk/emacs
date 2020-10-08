@@ -307,7 +307,7 @@ any confusion."
   "Command to take a screenshot.
 The command should insert a PNG in the current buffer."
   :group 'message-various
-  :type '(list string)
+  :type '(repeat string)
   :version "28.1")
 
 ;;; Start of variables adopted from `message-utils.el'.
@@ -4568,7 +4568,8 @@ This function could be useful in `message-setup-hook'."
 (custom-add-option 'message-setup-hook 'message-check-recipients)
 
 (defun message-add-action (action &rest types)
-  "Add ACTION to be performed when doing an exit of type TYPES."
+  "Add ACTION to be performed when doing an exit of type TYPES.
+Valid types are `send', `return', `exit', `kill' and `postpone'."
   (while types
     (add-to-list (intern (format "message-%s-actions" (pop types)))
 		 action)))
@@ -5658,7 +5659,7 @@ The result is a fixnum."
 	       (mail-file-babyl-p filename))
 	  ;; gnus-output-to-mail does the wrong thing with live, mbox
 	  ;; Rmail buffers in Emacs 23.
-	  ;; http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=597255
+          ;; https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=597255
 	  (let ((buff (find-buffer-visiting filename)))
 	    (and buff (with-current-buffer buff
 			(eq major-mode 'rmail-mode)))))
@@ -8099,7 +8100,7 @@ See `gmm-tool-bar-from-list' for the format of the list."
 		  (library image &optional path no-error))
 
 (defun message-make-tool-bar (&optional force)
-  "Make a message mode tool bar from `message-tool-bar-list'.
+  "Make a message mode tool bar from `message-tool-bar'.
 When FORCE, rebuild the tool bar."
   (when (and (boundp 'tool-bar-mode)
 	     tool-bar-mode
@@ -8590,7 +8591,7 @@ Meant for use on `completion-at-point-functions'."
 
 ;; FIXME: What is the most common term (circular letter, form letter, serial
 ;; letter, standard letter) for such kind of letter?  See also
-;; <http://en.wikipedia.org/wiki/Form_letter>
+;; <https://en.wikipedia.org/wiki/Form_letter>
 
 ;; FIXME: Maybe extent message-mode's font-lock support to recognize
 ;; `message-form-letter-separator', i.e. highlight each message like a single

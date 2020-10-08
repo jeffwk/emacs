@@ -10619,7 +10619,7 @@ include the height of both, if present, in the return value.  */)
       while (bpos > BEGV_BYTE)
 	{
 	  dec_both (&start, &bpos);
-	  c = FETCH_CHAR (bpos);
+	  c = FETCH_BYTE (bpos);
 	  if (!(c == ' ' || c == '\t'))
 	    break;
 	}
@@ -10641,7 +10641,7 @@ include the height of both, if present, in the return value.  */)
       while (bpos > BEGV_BYTE)
 	{
 	  dec_both (&end, &bpos);
-	  c = FETCH_CHAR (bpos);
+	  c = FETCH_BYTE (bpos);
 	  if (!(c == ' ' || c == '\t' || c == '\n' || c == '\r'))
 	    break;
 	}
@@ -11809,7 +11809,20 @@ resize_mini_window (struct window *w, bool exact_p)
 	  height = (max_height / unit) * unit;
 	  init_iterator (&it, w, ZV, ZV_BYTE, NULL, DEFAULT_FACE_ID);
 	  move_it_vertically_backward (&it, height - unit);
+	  /* The following move is usually a no-op when the stuff
+	     displayed in the mini-window comes entirely from buffer
+	     text, but it is needed when some of it comes from overlay
+	     strings, especially when there's an after-string at ZV.
+	     This happens with some completion packages, like
+	     icomplete, ido-vertical, etc.  With those packages, if we
+	     don't force w->start to be at the beginning of a screen
+	     line, important parts of the stuff in the mini-window,
+	     such as user prompt, will be hidden from view.  */
+	  move_it_by_lines (&it, 0);
 	  start = it.current.pos;
+	  /* Prevent redisplay_window from recentering, and thus from
+	     overriding the window-start point we computed here.  */
+	  w->start_at_line_beg = false;
 	}
       else
 	SET_TEXT_POS (start, BEGV, BEGV_BYTE);
@@ -12387,12 +12400,12 @@ unwind_format_mode_line (Lisp_Object vector)
   mode_line_string_face_prop = AREF (vector, 5);
 
   /* Select window before buffer, since it may change the buffer.  */
-  if (!NILP (old_window))
+  if (WINDOW_LIVE_P (old_window))
     {
       /* If the operation that we are unwinding had selected a window
 	 on a different frame, reset its frame-selected-window.  For a
 	 text terminal, reset its top-frame if necessary.  */
-      if (!NILP (target_frame_window))
+      if (WINDOW_LIVE_P (target_frame_window))
 	{
 	  Lisp_Object frame
 	    = WINDOW_FRAME (XWINDOW (target_frame_window));
@@ -12409,7 +12422,7 @@ unwind_format_mode_line (Lisp_Object vector)
       /* Restore point of target_frame_window's buffer (Bug#32777).
 	 But do this only after old_window has been reselected to
 	 avoid that the window point of target_frame_window moves.  */
-      if (!NILP (target_frame_window))
+      if (WINDOW_LIVE_P (target_frame_window))
 	{
 	  Lisp_Object buffer = AREF (vector, 10);
 
@@ -12837,23 +12850,68 @@ update_menu_bar (struct frame *f, bool save_match_data, bool hooks_run)
 			       Tab-bars
  ***********************************************************************/
 
-#ifdef HAVE_WINDOW_SYSTEM
-
-/* Select `frame' temporarily without running all the code in
-   do_switch_frame.
-   FIXME: Maybe do_switch_frame should be trimmed down similarly
-   when `norecord' is set.  */
+/* Restore WINDOW as the selected window and its frame as the selected
+   frame.  If WINDOW is dead but the selected frame is live, make the
+   latter's selected window the selected window.  If both, WINDOW and
+   the selected frame, are dead, assign selected frame and window from
+   some arbitrary live frame.  Abort if no such frame can be found.  */
 static void
-fast_set_selected_frame (Lisp_Object frame)
+restore_selected_window (Lisp_Object window)
 {
-  if (!EQ (selected_frame, frame))
+  if (WINDOW_LIVE_P (window))
+    /* If WINDOW is live, make it the selected window and its frame's
+       selected window and set the selected frame to its frame.  */
     {
-      selected_frame = frame;
-      selected_window = XFRAME (frame)->selected_window;
+      selected_window = window;
+      selected_frame = XWINDOW (window)->frame;
+      FRAME_SELECTED_WINDOW (XFRAME (selected_frame)) = window;
+    }
+  else if (FRAMEP (selected_frame) && FRAME_LIVE_P (XFRAME (selected_frame)))
+    /* If WINDOW is dead but the selected frame is still live, make the
+       latter's selected window the selected one.  */
+    selected_window = FRAME_SELECTED_WINDOW (XFRAME (selected_frame));
+  else
+    /* If WINDOW and the selected frame are dead, choose some live,
+       non-child and non-tooltip frame as the new selected frame and
+       make its selected window the selected window.  */
+    {
+      Lisp_Object tail;
+      Lisp_Object frame UNINIT;
+
+      FOR_EACH_FRAME (tail, frame)
+	{
+	  struct frame *f = XFRAME (frame);
+
+	  if (!FRAME_PARENT_FRAME (f) && !FRAME_TOOLTIP_P (f))
+	    {
+	      selected_frame = frame;
+	      selected_window = FRAME_SELECTED_WINDOW (f);
+
+	      return;
+	    }
+	}
+
+      /* Abort if we cannot find a live frame.  */
+      emacs_abort ();
     }
 }
 
-#endif /* HAVE_WINDOW_SYSTEM */
+/* Restore WINDOW, if live, as its frame's selected window.  */
+static void
+restore_frame_selected_window (Lisp_Object window)
+{
+  if (WINDOW_LIVE_P (window))
+    /* If WINDOW is live, make it its frame's selected window.  If that
+       frame is the selected frame, make WINDOW the selected window as
+       well.  */
+    {
+      Lisp_Object frame = XWINDOW (window)->frame;
+
+      FRAME_SELECTED_WINDOW (XFRAME (frame)) = window;
+      if (EQ (frame, selected_frame))
+	selected_window = window;
+    }
+}
 
 /* Update the tab-bar item list for frame F.  This has to be done
    before we start to fill in any display lines.  Called from
@@ -12926,9 +12984,10 @@ update_tab_bar (struct frame *f, bool save_match_data)
 		       XFRAME (selected_frame)->selected_window));
 #ifdef HAVE_WINDOW_SYSTEM
 	  Lisp_Object frame;
-	  record_unwind_protect (fast_set_selected_frame, selected_frame);
+	  record_unwind_protect (restore_selected_window, selected_window);
 	  XSETFRAME (frame, f);
-	  fast_set_selected_frame (frame);
+	  selected_frame = frame;
+	  selected_window = FRAME_SELECTED_WINDOW (f);
 #endif
 
 	  /* Build desired tab-bar items from keymaps.  */
@@ -13860,9 +13919,10 @@ update_tool_bar (struct frame *f, bool save_match_data)
 		       /* Since we only explicitly preserve selected_frame,
 			  check that selected_window would be redundant.  */
 		       XFRAME (selected_frame)->selected_window));
-	  record_unwind_protect (fast_set_selected_frame, selected_frame);
+	  record_unwind_protect (restore_selected_window, selected_window);
 	  XSETFRAME (frame, f);
-	  fast_set_selected_frame (frame);
+	  selected_frame = frame;
+	  selected_window = FRAME_SELECTED_WINDOW (f);
 
 	  /* Build desired tool-bar items from keymaps.  */
           new_tool_bar
@@ -22264,7 +22324,7 @@ trailing_whitespace_p (ptrdiff_t charpos)
   int c = 0;
 
   while (bytepos < ZV_BYTE
-	 && (c = FETCH_CHAR (bytepos),
+	 && (c = FETCH_BYTE (bytepos),
 	     c == ' ' || c == '\t'))
     ++bytepos;
 
@@ -22811,10 +22871,11 @@ display_count_lines_visually (struct it *it)
 	  SET_TEXT_POS (from, PT, PT_BYTE);
 	  to = IT_CHARPOS (*it);
 	}
-      start_display (&tem_it, it->w, from);
       /* Need to disable visual mode temporarily, since otherwise the
-	 call to move_it_to will cause infinite recursion.  */
+	 call to move_it_to below and inside start_display will cause
+	 infinite recursion.  */
       specbind (Qdisplay_line_numbers, Qrelative);
+      start_display (&tem_it, it->w, from);
       /* Some redisplay optimizations could invoke us very far from
 	 PT, which will make the caller painfully slow.  There should
 	 be no need to go too far beyond the window's bottom, as any
@@ -25208,10 +25269,13 @@ static int
 display_mode_lines (struct window *w)
 {
   Lisp_Object old_selected_window = selected_window;
-  Lisp_Object old_selected_frame = selected_frame;
   Lisp_Object new_frame = w->frame;
-  Lisp_Object old_frame_selected_window = XFRAME (new_frame)->selected_window;
+  ptrdiff_t count = SPECPDL_INDEX ();
   int n = 0;
+
+  record_unwind_protect (restore_selected_window, selected_window);
+  record_unwind_protect
+    (restore_frame_selected_window, XFRAME (new_frame)->selected_window);
 
   if (window_wants_mode_line (w))
     {
@@ -25278,9 +25342,8 @@ display_mode_lines (struct window *w)
       ++n;
     }
 
-  XFRAME (new_frame)->selected_window = old_frame_selected_window;
-  selected_frame = old_selected_frame;
-  selected_window = old_selected_window;
+  unbind_to (count, Qnil);
+
   if (n > 0)
     w->must_be_updated_p = true;
   return n;

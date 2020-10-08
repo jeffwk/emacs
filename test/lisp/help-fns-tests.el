@@ -61,12 +61,16 @@ Return first line of the output of (describe-function-1 FUNC)."
     (should (string-match regexp result))))
 
 (ert-deftest help-fns-test-lisp-defun ()
-  (let ((regexp "a compiled Lisp function in .subr\\.el")
+  (let ((regexp (if (boundp 'comp-ctxt)
+                    "a native compiled Lisp function in .subr\\.el"
+                  "a compiled Lisp function in .subr\\.el"))
         (result (help-fns-tests--describe-function 'last)))
     (should (string-match regexp result))))
 
 (ert-deftest help-fns-test-lisp-defsubst ()
-  (let ((regexp "a compiled Lisp function in .subr\\.el")
+  (let ((regexp (if (boundp 'comp-ctxt)
+                    "a native compiled Lisp function in .subr\\.el"
+                  "a compiled Lisp function in .subr\\.el"))
         (result (help-fns-tests--describe-function 'posn-window)))
     (should (string-match regexp result))))
 
@@ -122,6 +126,9 @@ Return first line of the output of (describe-function-1 FUNC)."
     (should (> (point-max) 1))
     (goto-char (point-min))
     (should (looking-at "^font-lock-comment-face is "))))
+
+(defvar foo-test-map)
+(defvar help-fns-test--describe-keymap-foo)
 
 
 ;;; Tests for describe-keymap

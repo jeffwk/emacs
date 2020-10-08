@@ -5250,7 +5250,8 @@ dump_do_dump_relocation (const uintptr_t dump_base,
 	  dump_ptr (dump_base, reloc_offset);
 	comp_u->lambda_gc_guard_h = CALLN (Fmake_hash_table, QCtest, Qeq);
 	if (!CONSP (comp_u->file))
-	  error ("Trying to load incoherent dumped .eln");
+	  error ("Trying to load incoherent dumped eln file %s",
+		 SSDATA (comp_u->file));
 
 	/* Check just once if this is a local build or Emacs was installed.  */
 	if (installation_state == UNKNOWN)
@@ -5587,7 +5588,8 @@ pdumper_load (const char *dump_filename, char *argv0, char const *original_pwd)
 
   /* Once we can allocate and before loading .eln files we must set
      Vinvocation_directory (.eln paths are relative to it). */
-  set_invocation_vars (argv0, original_pwd);
+  init_vars_for_load (argv0, original_pwd);
+
   dump_do_all_dump_reloc_for_phase (header, dump_base, LATE_RELOCS);
   dump_do_all_dump_reloc_for_phase (header, dump_base, VERY_LATE_RELOCS);
   initialized = true;
