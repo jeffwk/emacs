@@ -2152,6 +2152,7 @@ Downloads and installs required packages as needed."
     (unless (package--user-selected-p name)
       (package--save-selected-packages
        (cons name package-selected-packages)))
+    (package--quickstart-maybe-refresh)
     pkg-desc))
 
 ;;;###autoload
@@ -2207,7 +2208,7 @@ If some packages are not installed propose to install them."
   "Delete DIR recursively.
 Clean-up the corresponding .eln files if Emacs is native
 compiled."
-  (when (boundp 'comp-ctxt)
+  (when (featurep 'nativecomp)
     (cl-loop
      for file in (directory-files-recursively dir ".el\\'")
      do (comp-clean-up-stale-eln (comp-el-to-eln-filename file))))
@@ -2640,8 +2641,7 @@ Used for the `action' property of buttons in the buffer created by
     (when (y-or-n-p (format-message "Install package `%s'? "
                                     (package-desc-full-name pkg-desc)))
       (package-install pkg-desc nil)
-      (revert-buffer nil t)
-      (goto-char (point-min)))))
+      (describe-package (package-desc-name pkg-desc)))))
 
 (defun package-delete-button-action (button)
   "Run `package-delete' on the package BUTTON points to.
@@ -2651,8 +2651,7 @@ Used for the `action' property of buttons in the buffer created by
     (when (y-or-n-p (format-message "Delete package `%s'? "
                                     (package-desc-full-name pkg-desc)))
       (package-delete pkg-desc)
-      (revert-buffer nil t)
-      (goto-char (point-min)))))
+      (describe-package (package-desc-name pkg-desc)))))
 
 (defun package-keyword-button-action (button)
   "Show filtered \"*Packages*\" buffer for BUTTON.

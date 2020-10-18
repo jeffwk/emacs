@@ -703,10 +703,10 @@ The value depends on `grep-command', `grep-template',
       (let ((grep-options
 	     (concat (if grep-use-null-device "-n" "-nH")
                      (if grep-use-null-filename-separator " --null")
-		     (if (grep-probe grep-program
-				     `(nil nil nil "-e" "foo" ,null-device)
-				     nil 1)
-			 " -e"))))
+                     (when (grep-probe grep-program
+                                       `(nil nil nil "-e" "foo" ,null-device)
+                                       nil 1)
+                       " -e"))))
 	(unless grep-command
 	  (setq grep-command
 		(format "%s %s %s " grep-program
@@ -959,10 +959,10 @@ The substitution is based on variables bound dynamically, and
 these include `opts', `dir', `files', `null-device', `excl' and
 `regexp'.")
 
-(defun grep-expand-template (template &optional regexp files dir excl)
+(defun grep-expand-template (template &optional regexp files dir excl more-opts)
   "Expand grep COMMAND string replacing <C>, <D>, <F>, <R>, and <X>."
   (let* ((command template)
-         (env `((opts . ,(let (opts)
+         (env `((opts . ,(let ((opts more-opts))
                            (when (and case-fold-search
                                       (isearch-no-upper-case-p regexp t))
                              (push "-i" opts))
@@ -1058,6 +1058,8 @@ REGEXP is used as a string in the prompt."
 	 (or (cdr (assoc files grep-files-aliases))
 	     files))))
 
+(defvar grep-use-directories-skip 'auto-detect)
+
 ;;;###autoload
 (defun lgrep (regexp &optional files dir confirm)
   "Run grep, searching for REGEXP in FILES in directory DIR.
@@ -1103,6 +1105,12 @@ command before it's run."
 	  (if (string= command grep-command)
 	      (setq command nil))
 	(setq dir (file-name-as-directory (expand-file-name dir)))
+	(unless (or (not grep-use-directories-skip) (eq grep-use-directories-skip t))
+	  (setq grep-use-directories-skip
+		(grep-probe grep-program
+			  `(nil nil nil "--directories=skip" "foo"
+				,null-device)
+			  nil 1)))
 	(setq command (grep-expand-template
 		       grep-template
 		       regexp
@@ -1119,7 +1127,9 @@ command before it's run."
 						     (shell-quote-argument
 						      (cdr ignore))))))
 				     grep-find-ignored-files
-				     " --exclude=")))))
+				     " --exclude=")))
+		       (and (eq grep-use-directories-skip t)
+			    '("--directories=skip"))))
 	(when command
 	  (if confirm
 	      (setq command

@@ -10567,7 +10567,7 @@ contains long lines that shall be truncated anyway.
 
 The optional argument Y-LIMIT, if non-nil, specifies the maximum Y
 coordinate beyond which the text is to be ignored; it is therefore
-also the maxcomp height that the function can return (excluding the
+also the maximum height that the function can return (excluding the
 height of the mode- or header-line, if any).  Y-LIMIT nil or omitted
 means consider all of the accessible portion of buffer text up to the
 position specified by TO.  Since calculating the text height of a
@@ -11043,7 +11043,7 @@ message_log_check_duplicate (ptrdiff_t prev_bol_byte, ptrdiff_t this_bol_byte)
 
 
 /* Display an echo area message M with a specified length of NBYTES
-   bytes.  The string may include NUL characters.  If M is not a
+   bytes.  The string may include null characters.  If M is not a
    string, clear out any existing message, and let the mini-buffer
    text show through.
 
@@ -11146,7 +11146,7 @@ message3_nolog (Lisp_Object m)
 }
 
 
-/* Display a NUL-terminated echo area message M.  If M is 0, clear
+/* Display a null-terminated echo area message M.  If M is 0, clear
    out any existing message, and let the mini-buffer text show through.
 
    The buffer M must continue to exist until after the echo area gets
@@ -15464,7 +15464,8 @@ redisplay_internal (void)
   /* No redisplay if running in batch mode or frame is not yet fully
      initialized, or redisplay is explicitly turned off by setting
      Vinhibit_redisplay.  */
-  if (FRAME_INITIAL_P (SELECTED_FRAME ())
+  if ((FRAME_INITIAL_P (SELECTED_FRAME ())
+       && redisplay_skip_initial_frame)
       || !NILP (Vinhibit_redisplay))
     return;
 
@@ -15756,7 +15757,12 @@ redisplay_internal (void)
 	      && CHARPOS (this_line_end_pos) == CHARPOS (tlendpos)
               /* Line has same height as before.  Otherwise other lines
                  would have to be shifted up or down.  */
-	      && this_line_pixel_height == line_height_before)
+	      && this_line_pixel_height == line_height_before
+	      /* Cannot use this optimization if hscrolling current
+		 line and this line is the current one, because
+		 display_line above is not informed about the
+		 current-line's vpos, and cannot DTRT in that case.  */
+	      && !hscrolling_current_line_p (w))
 	    {
  	      /* If this is not the window's last line, we must adjust
  		 the charstarts of the lines below.  */
@@ -21997,13 +22003,14 @@ extend_face_to_end_of_line (struct it *it)
      in the text area has to be drawn to the end of the text area.  */
   it->glyph_row->fill_line_p = true;
 
+  const int orig_face_id = it->face_id;
   /* If current character of IT is not ASCII, make sure we have the
      ASCII face.  This will be automatically undone the next time
      get_next_display_element returns a multibyte character.  Note
      that the character will always be single byte in unibyte
      text.  */
   if (!ASCII_CHAR_P (it->c))
-      it->face_id = FACE_FOR_CHAR (f, face, 0, -1, Qnil);
+    it->face_id = FACE_FOR_CHAR (f, face, 0, -1, Qnil);
 
   /* The default face, possibly remapped. */
   struct face *default_face =
@@ -22197,6 +22204,7 @@ extend_face_to_end_of_line (struct it *it)
 	  if (stretch_width < 0)
 	    it->glyph_row->x = stretch_width;
 	}
+      it->face_id = orig_face_id;
     }
   else
 #endif	/* HAVE_WINDOW_SYSTEM */
@@ -22206,7 +22214,6 @@ extend_face_to_end_of_line (struct it *it)
       struct text_pos saved_pos = it->position;
       Lisp_Object saved_object = it->object;;
       enum display_element_type saved_what = it->what;
-      int saved_face_id = it->face_id;
 
       it->what = IT_CHARACTER;
       memset (&it->position, 0, sizeof it->position);
@@ -22309,7 +22316,7 @@ extend_face_to_end_of_line (struct it *it)
       it->object = saved_object;
       it->position = saved_pos;
       it->what = saved_what;
-      it->face_id = saved_face_id;
+      it->face_id = orig_face_id;
     }
 }
 
@@ -26157,7 +26164,7 @@ are the selected window and the WINDOW's buffer).  */)
   return unbind_to (count, str);
 }
 
-/* Write a NUL-terminated, right justified decimal representation of
+/* Write a null-terminated, right justified decimal representation of
    the positive integer D to BUF using a minimal field width WIDTH.  */
 
 static void
@@ -26187,7 +26194,7 @@ pint2str (register char *buf, register int width, register ptrdiff_t d)
     }
 }
 
-/* Write a NUL-terminated, right justified decimal and "human
+/* Write a null-terminated, right justified decimal and "human
    readable" representation of the nonnegative integer D to BUF using
    a minimal field width WIDTH.  D should be smaller than 999.5e24. */
 
@@ -26410,7 +26417,7 @@ decode_mode_spec (struct window *w, register int c, int field_width,
      produce strings from numerical values, so limit preposterously
      large values of FIELD_WIDTH to avoid overrunning the buffer's
      end.  The size of the buffer is enough for FRAME_MESSAGE_BUF_SIZE
-     bytes plus the terminating NUL.  */
+     bytes plus the terminating null.  */
   int width = min (field_width, FRAME_MESSAGE_BUF_SIZE (f));
   struct buffer *b = current_buffer;
 
@@ -35467,6 +35474,12 @@ When nil, mouse-movement events will not be generated as long as the
 mouse stays within the extent of a single glyph (except for images).  */);
   mouse_fine_grained_tracking = false;
 
+  DEFVAR_BOOL ("redisplay-skip-initial-frame", redisplay_skip_initial_frame,
+    doc: /* Non-nil to skip redisplay in initial frame.
+The initial frame is not displayed anywhere, so skipping it is
+best except in special circumstances such as running redisplay tests
+in batch mode.   */);
+  redisplay_skip_initial_frame = true;
 }
 
 
@@ -35477,6 +35490,8 @@ init_xdisp (void)
 {
   CHARPOS (this_line_start_pos) = 0;
 
+  echo_area_window = minibuf_window;
+
   if (!noninteractive)
     {
       struct window *m = XWINDOW (minibuf_window);
@@ -35485,8 +35500,6 @@ init_xdisp (void)
       Lisp_Object root = FRAME_ROOT_WINDOW (f);
       struct window *r = XWINDOW (root);
       int i;
-
-      echo_area_window = minibuf_window;
 
       r->top_line = FRAME_TOP_MARGIN (f);
       r->pixel_top = r->top_line * FRAME_LINE_HEIGHT (f);

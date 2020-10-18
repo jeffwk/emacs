@@ -101,6 +101,7 @@
     (define-key map "p" 'finder-by-keyword)
     (define-key map "P" 'describe-package)
     (define-key map "r" 'info-emacs-manual)
+    (define-key map "R" 'info-display-manual)
     (define-key map "s" 'describe-syntax)
     (define-key map "t" 'help-with-tutorial)
     (define-key map "w" 'where-is)
@@ -223,6 +224,7 @@ o SYMBOL    Display the given function or variable's documentation and value.
 p TOPIC     Find packages matching a given topic keyword.
 P PACKAGE   Describe the given Emacs Lisp package.
 r           Display the Emacs manual in Info mode.
+R           Prompt for a manual and then display it in Info mode.
 s           Display contents of current syntax table, plus explanations.
 S SYMBOL    Show the section for the given symbol in the Info manual
               for the programming language used in this buffer.
@@ -1320,6 +1322,8 @@ ARGLIST can also be t or a string of the form \"(FUN ARG1 ARG2 ...)\"."
                   (error "Unrecognized usage format"))
 	      (help--make-usage-docstring 'fn arglist)))))
 
+(declare-function subr-native-lambda-list "data.c")
+
 (defun help-function-arglist (def &optional preserve-names)
   "Return a formal argument list for the function DEF.
 If PRESERVE-NAMES is non-nil, return a formal arglist that uses
@@ -1335,7 +1339,9 @@ the same names as used in the original source code, when possible."
    ((and (byte-code-function-p def) (listp (aref def 0))) (aref def 0))
    ((eq (car-safe def) 'lambda) (nth 1 def))
    ((eq (car-safe def) 'closure) (nth 2 def))
-   ((and (subrp def) (listp (subr-native-lambda-list def)))
+   ((and (featurep 'nativecomp)
+         (subrp def)
+         (listp (subr-native-lambda-list def)))
     (subr-native-lambda-list def))
    ((or (and (byte-code-function-p def) (integerp (aref def 0)))
         (subrp def) (module-function-p def))

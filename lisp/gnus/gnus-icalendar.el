@@ -180,8 +180,10 @@
 		      (or (member (attendee-name prop) name-or-email)
 			  (let ((att-email (attendee-email prop)))
 			    (gnus-icalendar-find-if
-			     (lambda (email)
-			       (string-match email att-email))
+			     (lambda (str-or-fun)
+                   (if (functionp str-or-fun)
+                       (funcall str-or-fun att-email)
+                     (string-match str-or-fun att-email)))
 			     name-or-email))))))
       (gnus-icalendar-find-if #'attendee-prop-matches-p event-props))))
 
@@ -262,7 +264,14 @@
 				(map-property ical-property))
 			       args)))))
       (mapc #'accumulate-args prop-map)
-      (apply #'make-instance event-class args))))
+      (apply
+       #'make-instance
+       event-class
+       (cl-loop for slot in (eieio-class-slots event-class)
+		for keyword = (intern
+			       (format ":%s" (eieio-slot-descriptor-name slot)))
+		when (plist-member args keyword)
+		append (list keyword (plist-get args keyword)))))))
 
 (defun gnus-icalendar-event-from-buffer (buf &optional attendee-name-or-email)
   "Parse RFC5545 iCalendar in buffer BUF and return an event object.
@@ -763,9 +772,8 @@ These will be used to retrieve the RSVP information from ical events."
 	  (lambda (x) (if (listp x) x (list x)))
 	  (list user-full-name (regexp-quote user-mail-address)
 		;; NOTE: these can be lists
-		gnus-ignored-from-addresses ; already regexp-quoted
-		(unless (functionp message-alternative-emails) ; String or function.
-		  message-alternative-emails)
+		gnus-ignored-from-addresses ; String or function.
+		message-alternative-emails  ;  String or function.
 		(mapcar #'regexp-quote gnus-icalendar-additional-identities)))))
 
 ;; TODO: make the template customizable

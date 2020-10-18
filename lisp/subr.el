@@ -837,10 +837,11 @@ Elements of ALIST that are not conses are ignored."
 If KEY is not found in ALIST, return DEFAULT.
 Equality with KEY is tested by TESTFN, defaulting to `eq'.
 
-You can use `alist-get' in PLACE expressions.  This will modify
-an existing association (more precisely, the first one if
-multiple exist), or add a new element to the beginning of ALIST,
-destructively modifying the list stored in ALIST.
+You can use `alist-get' in \"place expressions\"; i.e., as a
+generalized variable.  Doing this will modify an existing
+association (more precisely, the first one if multiple exist), or
+add a new element to the beginning of ALIST, destructively
+modifying the list stored in ALIST.
 
 Example:
 
@@ -889,10 +890,6 @@ side-effects, and the argument LIST is not modified."
     list))
 
 ;;;; Keymap support.
-
-;; Declare before first use of `save-match-data',
-;; where it is used internally.
-(defvar save-match-data-internal)
 
 (defun kbd (keys)
   "Convert KEYS to the internal Emacs key representation.
@@ -1371,7 +1368,8 @@ EVENT is nil, the value of `posn-at-point' is used instead.
 The following accessor functions are used to access the elements
 of the position:
 
-`posn-window': The window the event is in.
+`posn-window': The window of the event end, or its frame if the
+event end point belongs to no window.
 `posn-area': A symbol identifying the area the event occurred in,
 or nil if the event occurred in the text area.
 `posn-point': The buffer position of the event.
@@ -1427,8 +1425,9 @@ than a window, return nil."
 
 (defsubst posn-window (position)
   "Return the window in POSITION.
-POSITION should be a list of the form returned by the `event-start'
-and `event-end' functions."
+If POSITION is outside the frame where the event was initiated,
+return that frame instead.  POSITION should be a list of the form
+returned by the `event-start' and `event-end' functions."
   (nth 0 position))
 
 (defsubst posn-area (position)
@@ -1455,9 +1454,14 @@ a click on a scroll bar)."
 (defun posn-set-point (position)
   "Move point to POSITION.
 Select the corresponding window as well."
-  (if (not (windowp (posn-window position)))
+  (if (framep (posn-window position))
+      (progn
+        (unless (windowp (frame-selected-window (posn-window position)))
+          (error "Position not in text area of window"))
+        (select-window (frame-selected-window (posn-window position))))
+    (unless (windowp (posn-window position))
       (error "Position not in text area of window"))
-  (select-window (posn-window position))
+    (select-window (posn-window position)))
   (if (numberp (posn-point position))
       (goto-char (posn-point position))))
 
@@ -1627,8 +1631,8 @@ be a list of the form returned by `event-start' and `event-end'."
 (make-obsolete-variable 'x-gtk-use-window-move nil "26.1")
 
 (defvaralias 'messages-buffer-max-lines 'message-log-max)
-(define-obsolete-variable-alias 'inhibit-null-byte-detection
-  'inhibit-nul-byte-detection "27.1")
+(define-obsolete-variable-alias 'inhibit-nul-byte-detection
+  'inhibit-null-byte-detection "28.1")
 (make-obsolete-variable 'load-dangerous-libraries
                         "no longer used." "27.1")
 
@@ -2619,7 +2623,15 @@ keyboard-quit events while waiting for a valid input."
 	  (unless (get-text-property 0 'face prompt)
 	    (setq prompt (propertize prompt 'face 'minibuffer-prompt)))
 	  (setq char (let ((inhibit-quit inhibit-keyboard-quit))
-		       (read-key prompt)))
+		       (read-char-from-minibuffer
+                        prompt
+                        ;; If we have a dynamically bound `help-form'
+                        ;; here, then the `C-h' (i.e., `help-char')
+                        ;; character should output that instead of
+                        ;; being a command char.
+                        (if help-form
+                            (cons help-char chars)
+                          chars))))
 	  (and show-help (buffer-live-p (get-buffer helpbuf))
 	       (kill-buffer helpbuf))
 	  (cond

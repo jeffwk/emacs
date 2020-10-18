@@ -4013,6 +4013,19 @@ compile_function (Lisp_Object func)
 /* In use by Fcomp_el_to_eln_filename.  */
 static Lisp_Object loadsearch_re_list;
 
+static Lisp_Object
+make_directory_wrapper (Lisp_Object directory)
+{
+  CALL2I (make-directory, directory, Qt);
+  return Qnil;
+}
+
+static Lisp_Object
+make_directory_wrapper_1 (Lisp_Object ignore)
+{
+  return Qt;
+}
+
 DEFUN ("comp-el-to-eln-filename", Fcomp_el_to_eln_filename,
        Scomp_el_to_eln_filename, 1, 2, 0,
        doc: /* Given a source FILENAME return the corresponding .eln filename.
@@ -4087,14 +4100,31 @@ If BASE-DIR is nil use the first entry in `comp-eln-load-path'.  */)
     {
       Lisp_Object eln_load_paths = Vcomp_eln_load_path;
       FOR_EACH_TAIL (eln_load_paths)
-	if (!NILP (Ffile_writable_p (XCAR (eln_load_paths))))
-	  {
-	    base_dir = XCAR (eln_load_paths);
-	    break;
-	  }
-      /* If we can't find it return Nil.  */
+	{
+	  Lisp_Object dir = XCAR (eln_load_paths);
+	  if (!NILP (Ffile_exists_p (dir)))
+	    {
+	      if (!NILP (Ffile_writable_p (dir)))
+		{
+		  base_dir = dir;
+		  break;
+		}
+	    }
+	  else
+	    {
+	      /* Try to create the directory and if succeeds use it.  */
+	      if (NILP (internal_condition_case_1 (make_directory_wrapper,
+						   dir, Qt,
+						   make_directory_wrapper_1)))
+		{
+		  base_dir = dir;
+		  break;
+		}
+	    }
+	}
       if (NILP (base_dir))
-	return Qnil;
+	error ("Cannot find suitable directory for output in "
+	       "`comp-native-load-path'.");
     }
 
   if (!file_name_absolute_p (SSDATA (base_dir)))
@@ -4128,7 +4158,7 @@ DEFUN ("comp--install-trampoline", Fcomp__install_trampoline,
       if (EQ (subr, orig_subr))
 	{
 	  freloc.link_table[i] = XSUBR (trampoline)->function.a0;
-	  Fputhash (subr_name, Qt, Vcomp_installed_trampolines_h);
+	  Fputhash (subr_name, trampoline, Vcomp_installed_trampolines_h);
 	  return Qt;
 	}
       i++;
@@ -4738,10 +4768,11 @@ unset_cu_load_ongoing (Lisp_Object comp_u)
   XNATIVE_COMP_UNIT (comp_u)->load_ongoing = false;
 }
 
-void
+Lisp_Object
 load_comp_unit (struct Lisp_Native_Comp_Unit *comp_u, bool loading_dump,
 		bool late_load)
 {
+  Lisp_Object res = Qnil;
   dynlib_handle_ptr handle = comp_u->handle;
   Lisp_Object comp_u_lisp_obj;
   XSETNATIVE_COMP_UNIT (comp_u_lisp_obj, comp_u);
@@ -4867,7 +4898,7 @@ load_comp_unit (struct Lisp_Native_Comp_Unit *comp_u, bool loading_dump,
 	}
       /* Executing this will perform all the expected environment
 	 modifications.  */
-      top_level_run (comp_u_lisp_obj);
+      res = top_level_run (comp_u_lisp_obj);
       /* Make sure data_ephemeral_vec still exists after top_level_run has run.
 	 Guard against sibling call optimization (or any other).  */
       data_ephemeral_vec = data_ephemeral_vec;
@@ -4880,7 +4911,7 @@ load_comp_unit (struct Lisp_Native_Comp_Unit *comp_u, bool loading_dump,
 
   register_native_comp_unit (comp_u_lisp_obj);
 
-  return;
+  return res;
 }
 
 Lisp_Object
@@ -5060,9 +5091,7 @@ DEFUN ("native-elisp-load", Fnative_elisp_load, Snative_elisp_load, 1, 2, 0,
   comp_u->data_vec = Qnil;
   comp_u->lambda_gc_guard_h = CALLN (Fmake_hash_table, QCtest, Qeq);
   comp_u->lambda_c_name_idx_h = CALLN (Fmake_hash_table, QCtest, Qequal);
-  load_comp_unit (comp_u, false, !NILP (late_load));
-
-  return Qt;
+  return load_comp_unit (comp_u, false, !NILP (late_load));
 }
 
 #endif /* HAVE_NATIVE_COMP */
@@ -5267,9 +5296,12 @@ The last directory of this list is assumed to be the system one.  */);
 		       redefinable effectivelly.  */);
 
   DEFVAR_LISP ("comp-installed-trampolines-h", Vcomp_installed_trampolines_h,
-	       doc: /* Hash table subr-name -> bool.  */);
+	       doc: /* Hash table subr-name -> installed trampoline.
+This is used to prevent double trampoline instantiation but also to
+protect the trampolines against GC.  */);
   Vcomp_installed_trampolines_h = CALLN (Fmake_hash_table);
 
+  Fprovide (intern_c_string ("nativecomp"), Qnil);
 #endif /* #ifdef HAVE_NATIVE_COMP */
 
   defsubr (&Snative_comp_available_p);

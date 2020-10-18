@@ -407,7 +407,7 @@ string_version_cmp (Lisp_Object string1, Lisp_Object string2)
 
   while ((cmp = filevercmp (p1, p2)) == 0)
     {
-      /* If the strings are identical through their first NUL bytes,
+      /* If the strings are identical through their first null bytes,
 	 skip past identical prefixes and try again.  */
       ptrdiff_t size = strlen (p1) + 1;
       eassert (size == strlen (p2) + 1);
@@ -2296,6 +2296,7 @@ The PLIST is modified by side effects.  */)
 
 DEFUN ("eql", Feql, Seql, 2, 2, 0,
        doc: /* Return t if the two args are `eq' or are indistinguishable numbers.
+Integers with the same value are `eql'.
 Floating-point values with the same sign, exponent and fraction are `eql'.
 This differs from numeric comparison: (eql 0.0 -0.0) returns nil and
 \(eql 0.0e+NaN 0.0e+NaN) returns t, whereas `=' does the opposite.  */)
