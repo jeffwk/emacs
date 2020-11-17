@@ -71,13 +71,6 @@
 
 ;; (define-key global-map [M-S-down-mouse-3] 'imenu)
 
-;;;; Font lock bugs as of v4.32:
-
-;; The following kinds of Perl code erroneously start strings:
-;; \$`  \$'  \$"
-;; $opt::s  $opt_s  $opt{s}  (s => ...)  /\s+.../
-;; likewise with m, tr, y, q, qX instead of s
-
 ;;; Code:
 
 ;;; Compatibility with older versions (for publishing on ELPA)
@@ -1613,6 +1606,9 @@ or as help on variables `cperl-tips', `cperl-problems',
   (if (cperl-val 'cperl-electric-keywords)
       (abbrev-mode 1))
   (set-syntax-table cperl-mode-syntax-table)
+  ;; Workaround for Bug#30393, needed for Emacs 26.
+  (when (< emacs-major-version 27)
+    (setq-local open-paren-in-column-0-is-defun-start nil))
   ;; Until Emacs is multi-threaded, we do not actually need it local:
   (make-local-variable 'cperl-font-lock-multiline-start)
   (make-local-variable 'cperl-font-locking)
@@ -3445,8 +3441,8 @@ Should be called with the point before leading colon of an attribute."
 	   (match-beginning 4) (match-end 4)
 	   'face dashface))
       ;; save match data (for looking-at)
-      (setq lll (mapcar (function (lambda (elt) (cons (match-beginning elt)
-						 (match-end elt))))
+      (setq lll (mapcar (lambda (elt) (cons (match-beginning elt)
+                                       (match-end elt)))
                         l))
       (while lll
 	(setq ll (car lll))
@@ -5987,6 +5983,7 @@ else
      (cperl-continued-brace-offset     .  0)
      (cperl-label-offset               . -2)
      (cperl-continued-statement-offset .  4)
+     (cperl-close-paren-offset         . -4)
      (cperl-extra-newline-before-brace .  nil)
      (cperl-extra-newline-before-brace-multiline .  nil)
      (cperl-merge-trailing-else        .  nil)
@@ -6761,10 +6758,10 @@ One may build such TAGS files from CPerl mode menu."
   (require 'etags)
   (require 'imenu)
   (if (or update (null (nth 2 cperl-hierarchy)))
-      (let ((remover (function (lambda (elt) ; (name (file1...) (file2..))
-				 (or (nthcdr 2 elt)
-				     ;; Only in one file
-				     (setcdr elt (cdr (nth 1 elt)))))))
+      (let ((remover (lambda (elt) ; (name (file1...) (file2..))
+                       (or (nthcdr 2 elt)
+                           ;; Only in one file
+                           (setcdr elt (cdr (nth 1 elt))))))
 	    to l1 l2 l3)
 	;; (setq cperl-hierarchy '(() () ())) ; Would write into '() later!
 	(setq cperl-hierarchy (list l1 l2 l3))
@@ -6844,33 +6841,33 @@ One may build such TAGS files from CPerl mode menu."
     (setq ord 2)
     (mapc move-deeper methods)
     (if recurse
-	(mapc (function (lambda (elt)
-			  (cperl-tags-treeify elt (1+ level))))
+        (mapc (lambda (elt)
+                (cperl-tags-treeify elt (1+ level)))
 	      (cdr to)))
     ;;Now clean up leaders with one child only
-    (mapc (function (lambda (elt)
-		      (if (not (and (listp (cdr elt))
-				    (eq (length elt) 2)))
-                          nil
-			(setcar elt (car (nth 1 elt)))
-			(setcdr elt (cdr (nth 1 elt))))))
+    (mapc (lambda (elt)
+            (if (not (and (listp (cdr elt))
+                          (eq (length elt) 2)))
+                nil
+              (setcar elt (car (nth 1 elt)))
+              (setcdr elt (cdr (nth 1 elt)))))
 	  (cdr to))
     ;; Sort the roots of subtrees
     (if (default-value 'imenu-sort-function)
 	(setcdr to
 		(sort (cdr to) (default-value 'imenu-sort-function))))
     ;; Now add back functions removed from display
-    (mapc (function (lambda (elt)
-		      (setcdr to (cons elt (cdr to)))))
+    (mapc (lambda (elt)
+            (setcdr to (cons elt (cdr to))))
 	  (if (default-value 'imenu-sort-function)
 	      (nreverse
 	       (sort root-functions (default-value 'imenu-sort-function)))
 	    root-functions))
     ;; Now add back packages removed from display
-    (mapc (function (lambda (elt)
-		      (setcdr to (cons (cons (concat "package " (car elt))
-					     (cdr elt))
-				       (cdr to)))))
+    (mapc (lambda (elt)
+            (setcdr to (cons (cons (concat "package " (car elt))
+                                   (cdr elt))
+                             (cdr to))))
 	  (if (default-value 'imenu-sort-function)
 	      (nreverse
 	       (sort root-packages (default-value 'imenu-sort-function)))
@@ -8214,11 +8211,11 @@ a result of qr//, this is not a performance hit), t for the rest."
     (and (eq (get-text-property beg 'syntax-type) 'string)
 	 (setq beg (next-single-property-change beg 'syntax-type nil limit)))
     (cperl-map-pods-heres
-     (function (lambda (s _e _p)
-		 (if (memq (get-text-property s 'REx-interpolated) skip)
-		     t
-		   (setq pp s)
-		   nil)))	; nil stops
+     (lambda (s _e _p)
+       (if (memq (get-text-property s 'REx-interpolated) skip)
+           t
+         (setq pp s)
+         nil))	; nil stops
      'REx-interpolated beg limit)
     (if pp (goto-char pp)
       (message "No more interpolated REx"))))
@@ -8337,7 +8334,7 @@ start with default arguments, then refine the slowdown regions."
   (or l (setq l 1))
   (or step (setq step 500))
   (or lim (setq lim 40))
-  (let* ((timems (function (lambda () (car (cperl--time-convert nil 1000)))))
+  (let* ((timems (lambda () (car (cperl--time-convert nil 1000))))
 	 (tt (funcall timems)) (c 0) delta tot)
     (goto-char (point-min))
     (forward-line (1- l))

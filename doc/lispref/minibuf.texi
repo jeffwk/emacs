@@ -2501,8 +2501,10 @@ frame is the buffer whose contents will be shown the next time that
 window is redisplayed.  The function is expected to fit the frame to
 the buffer in some appropriate way.
 
-Any other non-@code{nil} value means to resize minibuffer-only frames
-by calling @code{fit-frame-to-buffer} (@pxref{Resizing Windows}).
+Any other non-@code{nil} value means to resize minibuffer-only frames by
+calling @code{fit-mini-frame-to-buffer}, a function that behaves like
+@code{fit-frame-to-buffer} (@pxref{Resizing Windows}) but does not strip
+leading or trailing empty lines from the buffer text.
 @end defopt
 
 
@@ -2584,10 +2586,12 @@ The minibuffer command @code{next-matching-history-element} (normally
 @node Minibuffer Misc
 @section Minibuffer Miscellany
 
-@defun minibufferp &optional buffer-or-name
+@defun minibufferp &optional buffer-or-name live
 This function returns non-@code{nil} if @var{buffer-or-name} is a
-minibuffer.  If @var{buffer-or-name} is omitted, it tests the current
-buffer.
+minibuffer.  If @var{buffer-or-name} is omitted or @code{nil}, it
+tests the current buffer.  When @var{live} is non-@code{nil}, the
+function returns non-@code{nil} only when @var{buffer-or-name} is an
+active minibuffer.
 @end defun
 
 @defvar minibuffer-setup-hook

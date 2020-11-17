@@ -7323,14 +7323,21 @@ static next_element_function const get_next_element[NUM_IT_METHODS] =
 
 
 /* Return true iff a character at CHARPOS (and BYTEPOS) is composed
-   (possibly with the following characters).  */
+   (possibly with the following characters).
+
+  Note: we pass -1 as the "resolved bidi level" when the iterator
+  doesn't have the bidi_p flag set, because in that case we really
+  don't know what is the directionality of the text, so we leave it to
+  the shaping engine to figure that out.  */
 
 #define CHAR_COMPOSED_P(IT,CHARPOS,BYTEPOS,END_CHARPOS)			\
   ((IT)->cmp_it.id >= 0							\
    || ((IT)->cmp_it.stop_pos == (CHARPOS)				\
        && composition_reseat_it (&(IT)->cmp_it, CHARPOS, BYTEPOS,	\
 				 END_CHARPOS, (IT)->w,			\
-				 (IT)->bidi_it.resolved_level,		\
+				 (IT)->bidi_p				\
+				 ? (IT)->bidi_it.resolved_level		\
+				 : -1,					\
 				 FACE_FROM_ID_OR_NULL ((IT)->f,		\
 						       (IT)->face_id),	\
 				 (IT)->string)))
@@ -7555,7 +7562,7 @@ get_next_display_element (struct it *it)
 	     non-ASCII spaces and hyphens specially.  */
 	  if (! ASCII_CHAR_P (c) && ! NILP (Vnobreak_char_display))
 	    {
-	      if (c == NO_BREAK_SPACE)
+	      if (blankp (c))
 		nonascii_space_p = true;
 	      else if (c == SOFT_HYPHEN || c == HYPHEN
 		       || c == NON_BREAKING_HYPHEN)
@@ -8317,10 +8324,10 @@ next_element_from_display_vector (struct it *it)
 	    next_face_id = it->dpvec_face_id;
 	  else
 	    {
-	      int lface_id =
-		GLYPH_CODE_FACE (it->dpvec[it->current.dpvec_index + 1]);
+              Lisp_Object gc = it->dpvec[it->current.dpvec_index + 1];
+              int lface_id = GLYPH_CODE_P (gc) ? GLYPH_CODE_FACE (gc) : 0;
 
-	      if (lface_id > 0)
+              if (lface_id > 0)
 		next_face_id = merge_faces (it->w, Qt, lface_id,
 					    it->saved_face_id);
 	    }
@@ -18820,6 +18827,11 @@ redisplay_window (Lisp_Object window, bool just_this_one_p)
 
   /* Try to scroll by specified few lines.  */
   if ((0 < scroll_conservatively
+       /* FIXME: the option is supposed to affect minibuffers, but we
+	  test MINI_WINDOW_P, which can also catch uses of
+	  mini-windows for displaying the echo area.  Do we need to
+	  distinguish these two use cases?  */
+       || (scroll_minibuffer_conservatively && MINI_WINDOW_P (w))
        || 0 < emacs_scroll_step
        || temp_scroll_step
        || NUMBERP (BVAR (current_buffer, scroll_up_aggressively))
@@ -18830,7 +18842,10 @@ redisplay_window (Lisp_Object window, bool just_this_one_p)
       /* The function returns -1 if new fonts were loaded, 1 if
 	 successful, 0 if not successful.  */
       int ss = try_scrolling (window, just_this_one_p,
-			      scroll_conservatively,
+			      ((scroll_minibuffer_conservatively
+			        && MINI_WINDOW_P (w))
+			       ? SCROLL_LIMIT + 1
+			       : scroll_conservatively),
 			      emacs_scroll_step,
 			      temp_scroll_step, last_line_misfit);
       switch (ss)
@@ -22983,6 +22998,10 @@ maybe_produce_line_number (struct it *it)
   int lnum_face_id = merge_faces (it->w, Qline_number, 0, DEFAULT_FACE_ID);
   int current_lnum_face_id
     = merge_faces (it->w, Qline_number_current_line, 0, DEFAULT_FACE_ID);
+  /* From here onwards, we must prevent freeing realized faces, because
+     we are using the above 2 face IDs for the glyphs we produce.  */
+  bool save_free_realized_faces = inhibit_free_realized_faces;
+  inhibit_free_realized_faces = true;
   /* Compute point's line number if needed.  */
   if ((EQ (Vdisplay_line_numbers, Qrelative)
        || EQ (Vdisplay_line_numbers, Qvisual)
@@ -23112,9 +23131,12 @@ maybe_produce_line_number (struct it *it)
 	  it->lnum_width = 0;
 	  it->lnum_pixel_width = 0;
 	  bidi_unshelve_cache (itdata, false);
+	  inhibit_free_realized_faces = save_free_realized_faces;
 	  return;
 	}
     }
+
+  inhibit_free_realized_faces = save_free_realized_faces;
 
   /* Record the width in pixels we need for the line number display.  */
   it->lnum_pixel_width = tem_it.current_x;
@@ -27059,7 +27081,7 @@ display_string (const char *string, Lisp_Object lisp_string, Lisp_Object face_st
   else
     max_x = min (max_x, it->last_visible_x);
 
-  /* Skip over display elements that are not visible. because IT->w is
+  /* Skip over display elements that are not visible because IT->w is
      hscrolled.  */
   if (it->current_x < it->first_visible_x)
     move_it_in_display_line_to (it, 100000, it->first_visible_x,
@@ -31228,7 +31250,9 @@ get_window_cursor_type (struct window *w, struct glyph *glyph, int *width,
     {
       *active_cursor = false;
 
-      if (MINI_WINDOW_P (w) && minibuf_level == 0)
+      if (MINI_WINDOW_P (w) &&
+          (minibuf_level == 0
+           || is_minibuffer (0, w->contents)))
 	return NO_CURSOR;
 
       non_selected = true;
@@ -34546,7 +34570,14 @@ syms_of_xdisp (void)
 
   DEFSYM (Qredisplay_internal_xC_functionx, "redisplay_internal (C function)");
 
-  DEFVAR_BOOL("inhibit-message", inhibit_message,
+  DEFVAR_BOOL ("scroll-minibuffer-conservatively",
+               scroll_minibuffer_conservatively,
+               doc: /* Non-nil means scroll conservatively in minibuffer windows.
+When the value is nil, scrolling in minibuffer windows obeys the
+settings of `scroll-conservatively'.  */);
+  scroll_minibuffer_conservatively = true; /* bug#44070 */
+
+  DEFVAR_BOOL ("inhibit-message", inhibit_message,
               doc:  /* Non-nil means calls to `message' are not displayed.
 They are still logged to the *Messages* buffer.
 
@@ -34554,7 +34585,7 @@ Do NOT set this globally to a non-nil value, as doing that will
 disable messages everywhere, including in I-search and other
 places where they are necessary.  This variable is intended to
 be let-bound around code that needs to disable messages temporarily. */);
-  inhibit_message = 0;
+  inhibit_message = false;
 
   message_dolog_marker1 = Fmake_marker ();
   staticpro (&message_dolog_marker1);
@@ -34755,7 +34786,8 @@ If the value is t, Emacs highlights non-ASCII chars which have the
 same appearance as an ASCII space or hyphen, using the `nobreak-space'
 or `nobreak-hyphen' face respectively.
 
-U+00A0 (no-break space), U+00AD (soft hyphen), U+2010 (hyphen), and
+All of the non-ASCII characters in the Unicode horizontal whitespace
+character class, as well as U+00AD (soft hyphen), U+2010 (hyphen), and
 U+2011 (non-breaking hyphen) are affected.
 
 Any other non-nil value means to display these characters as an escape
@@ -35275,6 +35307,8 @@ It has no effect when set to 0, or when line numbers are not absolute.  */);
 
   DEFVAR_BOOL ("display-fill-column-indicator", display_fill_column_indicator,
     doc: /* Non-nil means display the fill column indicator.
+If you set this non-nil, make sure `display-fill-column-indicator-character'
+is also non-nil.
 See Info node `Displaying Boundaries' for details.  */);
   display_fill_column_indicator = false;
   DEFSYM (Qdisplay_fill_column_indicator, "display-fill-column-indicator");
@@ -35292,8 +35326,8 @@ See Info node `Displaying Boundaries' for details.  */);
 
   DEFVAR_LISP ("display-fill-column-indicator-character", Vdisplay_fill_column_indicator_character,
     doc: /* Character to draw the indicator when `display-fill-column-indicator' is non-nil.
-The default is U+2502 but a good alternative is (ascii 124)
-if the font in fill-column-indicator face does not support Unicode characters.
+A good candidate is U+2502, and an alternative is (ascii 124) if the
+font of `fill-column-indicator' face does not support Unicode characters.
 See Info node `Displaying Boundaries' for details.  */);
   Vdisplay_fill_column_indicator_character = Qnil;
   DEFSYM (Qdisplay_fill_column_indicator_character, "display-fill-column-indicator-character");

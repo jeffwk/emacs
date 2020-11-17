@@ -186,17 +186,33 @@ All commands in `lisp-mode-shared-map' are inherited by this map.")
       (byte-compile-file buffer-file-name)
     (error "The buffer must be saved in a file first")))
 
-(defun emacs-lisp-byte-compile-and-load ()
-  "Byte-compile the current file (if it has changed), then load compiled code."
-  (interactive)
+(defun emacs-lisp--before-compile-buffer ()
+  "Make sure the buffer is saved before compiling."
   (or buffer-file-name
       (error "The buffer must be saved in a file first"))
-  (require 'bytecomp)
   ;; Recompile if file or buffer has changed since last compilation.
   (if (and (buffer-modified-p)
 	   (y-or-n-p (format "Save buffer %s first? " (buffer-name))))
-      (save-buffer))
-  (byte-recompile-file buffer-file-name nil 0 t))
+      (save-buffer)))
+
+(defun emacs-lisp-byte-compile-and-load ()
+  "Byte-compile the current file (if it has changed), then load compiled code."
+  (interactive)
+  (emacs-lisp--before-compile-buffer)
+  (require 'bytecomp)
+  (byte-recompile-file buffer-file-name nil 0)
+  (load buffer-file-name))
+
+(defun emacs-lisp-native-compile-and-load ()
+  "Native-compile synchronously the current file (if it has changed).
+Load the compiled code when finished.
+
+Use `emacs-lisp-byte-compile-and-load' in combination with
+`comp-deferred-compilation' set to `t' to achieve asynchronous
+native compilation."
+  (interactive)
+  (emacs-lisp--before-compile-buffer)
+  (load (native-compile buffer-file-name)))
 
 (defun emacs-lisp-macroexpand ()
   "Macroexpand the form after point.
@@ -896,8 +912,10 @@ non-nil result supersedes the xrefs produced by
     (let ((buffer-point (find-function-search-for-symbol symbol type file)))
       (with-current-buffer (car buffer-point)
         (save-excursion
-          (goto-char (or (cdr buffer-point) (point-min)))
-          (point-marker))))))
+          (save-restriction
+            (widen)
+            (goto-char (or (cdr buffer-point) (point-min)))
+            (point-marker)))))))
 
 (cl-defmethod xref-location-group ((l xref-elisp-location))
   (xref-elisp-location-file l))
@@ -1409,6 +1427,31 @@ which see."
   1 - contains the string last displayed in the echo area for variables,
       or argument string for functions.
   2 - `function' if function args, `variable' if variable documentation.")
+
+(defun elisp--documentation-one-liner ()
+  (let* (str
+         (callback (lambda (doc &rest plist)
+                     (when doc
+                       (setq str
+                             (format "%s: %s"
+                                     (propertize (prin1-to-string
+                                                  (plist-get plist :thing))
+                                                 'face (plist-get plist :face))
+                                     doc))))))
+    (or (progn (elisp-eldoc-var-docstring callback) str)
+        (progn (elisp-eldoc-funcall callback) str))))
+
+(defalias 'elisp-eldoc-documentation-function 'elisp--documentation-one-liner
+  "Return Elisp documentation for the thing at point as one-line string.
+This is meant as a backward compatibility aide to the \"old\"
+Elisp eldoc behaviour.  Consider variable docstrings and function
+signatures only, in this order.  If none applies, returns nil.
+Changes to `eldoc-documentation-functions' and
+`eldoc-documentation-strategy' are _not_ reflected here.  As such
+it is preferrable to use ElDoc's interfaces directly.")
+
+(make-obsolete 'elisp-eldoc-documentation-function
+               "use ElDoc's interfaces instead." "28.1")
 
 (defun elisp-eldoc-funcall (callback &rest _ignored)
   "Document function call at point.

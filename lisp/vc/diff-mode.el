@@ -208,6 +208,8 @@ and hunk-based syntax highlighting otherwise as a fallback."
     ;; `d' because it duplicates the context :-(  --Stef
     ("\C-c\C-d" . diff-unified->context)
     ("\C-c\C-w" . diff-ignore-whitespace-hunk)
+    ;; `l' because it "refreshes" the hunk like C-l refreshes the screen
+    ("\C-c\C-l" . diff-refresh-hunk)
     ("\C-c\C-b" . diff-refine-hunk)  ;No reason for `b' :-(
     ("\C-c\C-f" . next-error-follow-minor-mode))
   "Keymap for `diff-mode'.  See also `diff-mode-shared-map'.")
@@ -244,6 +246,8 @@ and hunk-based syntax highlighting otherwise as a fallback."
      :help "Split the current (unified diff) hunk at point into two hunks"]
     ["Ignore whitespace changes" diff-ignore-whitespace-hunk
      :help "Re-diff the current hunk, ignoring whitespace differences"]
+    ["Recompute the hunk" diff-refresh-hunk
+     :help "Re-diff the current hunk, keeping the whitespace differences"]
     ["Highlight fine changes"	diff-refine-hunk
      :help "Highlight changes of hunk at point at a finer granularity"]
     ["Kill current hunk"	diff-hunk-kill
@@ -1860,7 +1864,10 @@ SWITCHED is non-nil if the patch is already applied."
 	   (buf (if revision
                     (let ((vc-find-revision-no-save t))
                       (vc-find-revision (expand-file-name file) revision diff-vc-backend))
-                  (find-file-noselect file))))
+                  ;; NOPROMPT is only non-nil when called from
+                  ;; `which-function-mode', so avoid "File x changed
+                  ;; on disk. Reread from disk?" warnings.
+                  (find-file-noselect file noprompt))))
       ;; Update the user preference if he so wished.
       (when (> (prefix-numeric-value other-file) 8)
 	(setq diff-jump-to-old-file other))
@@ -2042,8 +2049,15 @@ For use in `add-log-current-defun-function'."
 (defun diff-ignore-whitespace-hunk ()
   "Re-diff the current hunk, ignoring whitespace differences."
   (interactive)
+  (diff-refresh-hunk t))
+
+(defun diff-refresh-hunk (&optional ignore-whitespace)
+  "Re-diff the current hunk."
+  (interactive)
   (let* ((char-offset (- (point) (diff-beginning-of-hunk t)))
-	 (opts (pcase (char-after) (?@ "-bu") (?* "-bc") (_ "-b")))
+	 (opt-type (pcase (char-after)
+                     (?@ "-u")
+                     (?* "-c")))
 	 (line-nb (and (or (looking-at "[^0-9]+\\([0-9]+\\)")
 			   (error "Can't find line number"))
 		       (string-to-number (match-string 1))))
@@ -2054,7 +2068,12 @@ For use in `add-log-current-defun-function'."
 	 (file1 (make-temp-file "diff1"))
 	 (file2 (make-temp-file "diff2"))
 	 (coding-system-for-read buffer-file-coding-system)
-	 old new)
+	 opts old new)
+    (when ignore-whitespace
+      (setq opts '("-b")))
+    (when opt-type
+      (setq opts (cons opt-type opts)))
+
     (unwind-protect
 	(save-excursion
 	  (setq old (diff-hunk-text hunk nil char-offset))
@@ -2063,8 +2082,9 @@ For use in `add-log-current-defun-function'."
 	  (write-region (concat lead (car new)) nil file2 nil 'nomessage)
 	  (with-temp-buffer
 	    (let ((status
-		   (call-process diff-command nil t nil
-				 opts file1 file2)))
+		   (apply 'call-process
+			  `(,diff-command nil t nil
+			                 ,@opts ,file1 ,file2))))
 	      (pcase status
 		(0 nil)                 ;Nothing to reformat.
 		(1 (goto-char (point-min))

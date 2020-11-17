@@ -899,12 +899,9 @@ This basically creates a sparse keymap, and makes its parent be
   "Additional menu items while in file-mode.")
 
 (defvar speedbar-easymenu-definition-trailer
-  (append
-   (if (and (featurep 'custom) (fboundp 'custom-declare-variable))
-       (list ["Customize..." speedbar-customize t]))
-   (list
+  '(["Customize..." speedbar-customize t]
     ["Close" dframe-close-frame t]
-    ["Quit" delete-frame t] ))
+    ["Quit" delete-frame t])
   "Menu items appearing at the end of the speedbar menu.")
 
 (defvar speedbar-desired-buffer nil
@@ -1392,7 +1389,7 @@ Argument ARG represents to force a refresh past any caches that may exist."
     (if (and (file-exists-p f) (string-match "\\.el\\'" f))
 	(progn
 	  (dframe-select-attached-frame speedbar-frame)
-	  (byte-compile-file f nil)
+          (byte-compile-file f)
 	  (select-frame sf)
 	  (speedbar-reset-scanners)))
     ))
@@ -1877,9 +1874,9 @@ matches the user directory ~, then it is replaced with a ~.
 INDEX is not used, but is required by the caller."
   (let* ((tilde (expand-file-name "~/"))
 	 (dd (expand-file-name directory))
-	 (junk (string-match (regexp-quote tilde) dd))
+	 (junk (string-prefix-p "~/" dd))
 	 (displayme (if junk
-			(concat "~/" (substring dd (match-end 0)))
+			(concat "~/" (substring dd 2 nil))
 		      dd))
 	 (p (point)))
     (if (string-match "^~[/\\]?\\'" displayme) (setq displayme tilde))

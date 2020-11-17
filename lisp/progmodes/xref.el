@@ -600,9 +600,9 @@ SELECT is `quit', also quit the *xref* window."
 
 (defun xref-goto-xref (&optional quit)
   "Jump to the xref on the current line and select its window.
-Non-interactively, non-nil QUIT means to first quit the *xref*
-buffer."
-  (interactive)
+Non-interactively, non-nil QUIT, or interactively, with prefix argument
+means to first quit the *xref* buffer."
+  (interactive "P")
   (let* ((buffer (current-buffer))
          (xref (or (xref--item-at-point)
                    (user-error "No reference at point")))
@@ -1325,7 +1325,7 @@ FILES must be a list of absolute file names."
   ;; call-process-region *is* measurably faster, even for a program
   ;; doing some actual work (for a period of time). Even though
   ;; call-process-region also creates a temp file internally
-  ;; (http://lists.gnu.org/archive/html/emacs-devel/2019-01/msg00211.html).
+  ;; (https://lists.gnu.org/archive/html/emacs-devel/2019-01/msg00211.html).
   (if (not (file-remote-p default-directory))
       (apply #'call-process-region
              start end program nil buffer display args)

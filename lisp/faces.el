@@ -2580,7 +2580,7 @@ non-nil."
   :group 'basic-faces)
 
 (defface mode-line-highlight
-  '((((class color) (min-colors 88))
+  '((((supports :box t) (class color) (min-colors 88))
      :box (:line-width 2 :color "grey40" :style released-button))
     (t
      :inherit highlight))
@@ -2718,9 +2718,11 @@ used to display the prompt text."
   :group 'frames
   :group 'basic-faces)
 
-(defface scroll-bar '((t nil))
+(defface scroll-bar
+  '((((background light)) :foreground "black")
+    (((background dark))  :foreground "white"))
   "Basic face for the scroll bar colors under X."
-  :version "21.1"
+  :version "28.1"
   :group 'frames
   :group 'basic-faces)
 

@@ -420,7 +420,7 @@ killed after rendering."
       (narrow-to-region start end)
       (goto-char start)
       (let ((case-fold-search t))
-        (while (re-search-forward "<[^0-9a-z!/]" nil t)
+        (while (re-search-forward "<[^0-9a-z!?/]" nil t)
           (goto-char (match-beginning 0))
           (delete-region (point) (1+ (point)))
           (insert "&lt;"))))))
@@ -695,11 +695,12 @@ Currently this means either text/html or application/xhtml+xml."
   (eww-handle-link dom)
   (let ((start (point)))
     (shr-tag-a dom)
-    (put-text-property start (point)
-                       'keymap
-                       (if (mm-images-in-region-p start (point))
-                           eww-image-link-keymap
-                         eww-link-keymap))))
+    (if (dom-attr dom 'href)
+        (put-text-property start (point)
+                           'keymap
+                           (if (mm-images-in-region-p start (point))
+                               eww-image-link-keymap
+                             eww-link-keymap)))))
 
 (defun eww--limit-string-pixelwise (string pixels)
   (if (not pixels)
@@ -810,14 +811,19 @@ Currently this means either text/html or application/xhtml+xml."
 
 (declare-function mailcap-view-mime "mailcap" (type))
 (defun eww-display-pdf ()
-  (let ((data (buffer-substring (point) (point-max))))
-    (pop-to-buffer-same-window (get-buffer-create "*eww pdf*"))
-    (let ((coding-system-for-write 'raw-text)
-	  (inhibit-read-only t))
-      (erase-buffer)
-      (insert data)
-      (mailcap-view-mime "application/pdf")))
-  (goto-char (point-min)))
+  (let ((buf (current-buffer))
+        (pos (point)))
+    (with-current-buffer (get-buffer-create "*eww pdf*")
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (set-buffer-multibyte nil)
+        (insert-buffer-substring buf pos)
+        (mailcap-view-mime "application/pdf"))
+      (if (zerop (buffer-size))
+          ;; Buffer contents passed to shell command via temporary file.
+          (kill-buffer)
+        (goto-char (point-min))
+        (pop-to-buffer-same-window (current-buffer))))))
 
 (defun eww-setup-buffer ()
   (when (or (plist-get eww-data :url)
@@ -1189,6 +1195,7 @@ just re-display the HTML already fetched."
     (define-key map [(control e)] 'eww-end-of-text)
     (define-key map [?\t] 'shr-next-link)
     (define-key map [?\M-\t] 'shr-previous-link)
+    (define-key map [backtab] 'shr-previous-link)
     map))
 
 (defvar eww-textarea-map
@@ -1198,6 +1205,7 @@ just re-display the HTML already fetched."
     (define-key map [(control c) (control c)] 'eww-submit)
     (define-key map [?\t] 'shr-next-link)
     (define-key map [?\M-\t] 'shr-previous-link)
+    (define-key map [backtab] 'shr-previous-link)
     map))
 
 (defvar eww-select-map

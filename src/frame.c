@@ -1484,6 +1484,7 @@ do_switch_frame (Lisp_Object frame, int track, int for_deletion, Lisp_Object nor
 #endif
     internal_last_event_frame = Qnil;
 
+  move_minibuffer_onto_frame ();
   return frame;
 }
 
@@ -2437,6 +2438,12 @@ passing the normal return value to that function as an argument,
 and returns whatever that function returns.  */)
   (void)
 {
+  return mouse_position (true);
+}
+
+Lisp_Object
+mouse_position (bool call_mouse_position_function)
+{
   struct frame *f;
   Lisp_Object lispy_dummy;
   Lisp_Object x, y, retval;
@@ -2465,7 +2472,7 @@ and returns whatever that function returns.  */)
     }
   XSETFRAME (lispy_dummy, f);
   retval = Fcons (lispy_dummy, Fcons (x, y));
-  if (!NILP (Vmouse_position_function))
+  if (call_mouse_position_function && !NILP (Vmouse_position_function))
     retval = call1 (Vmouse_position_function, retval);
   return retval;
 }
@@ -6193,7 +6200,7 @@ window of that frame is the buffer whose text will be eventually shown
 in the minibuffer window.
 
 Any other non-nil value means to resize minibuffer-only frames by
-calling `fit-frame-to-buffer'.  */);
+calling `fit-mini-frame-to-buffer'.  */);
   resize_mini_frames = Qnil;
 
   DEFVAR_LISP ("focus-follows-mouse", focus_follows_mouse,

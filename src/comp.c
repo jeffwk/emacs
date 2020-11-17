@@ -406,6 +406,9 @@ load_gccjit_if_necessary (bool mandatory)
 }
 
 
+/* Increase this number to force a new Vcomp_abi_hash to be generated.  */
+#define ABI_VERSION "0"
+
 /* C symbols emitted for the load relocation mechanism.  */
 #define CURRENT_THREAD_RELOC_SYM "current_thread_reloc"
 #define PURE_RELOC_SYM "pure_reloc"
@@ -422,10 +425,6 @@ load_gccjit_if_necessary (bool mandatory)
 
 #define TEXT_OPTIM_QLY_SYM "text_optim_qly"
 #define TEXT_FDOC_SYM "text_data_fdoc"
-
-
-#define COMP_SPEED XFIXNUM (Fsymbol_value (Qcomp_speed))
-#define COMP_DEBUG XFIXNUM (Fsymbol_value (Qcomp_debug))
 
 #define STR_VALUE(s) #s
 #define STR(s) STR_VALUE (s)
@@ -485,6 +484,8 @@ enum cast_kind_of_type
 /* C side of the compiler context.  */
 
 typedef struct {
+  EMACS_INT speed;
+  EMACS_INT debug;
   gcc_jit_context *ctxt;
   gcc_jit_type *void_type;
   gcc_jit_type *bool_type;
@@ -780,8 +781,10 @@ hash_native_abi (void)
   eassert (NILP (Vcomp_abi_hash));
 
   Vcomp_abi_hash =
-    comp_hash_string (Fmapconcat (intern_c_string ("subr-name"),
-				  Vcomp_subr_list, build_string ("")));
+    comp_hash_string (
+      concat2 (build_string (ABI_VERSION),
+	       Fmapconcat (intern_c_string ("subr-name"),
+			   Vcomp_subr_list, build_string (""))));
   Lisp_Object separator = build_string ("-");
   Vcomp_native_version_dir =
     concat3 (Vemacs_version,
@@ -916,7 +919,7 @@ obj_to_reloc (Lisp_Object obj)
 static void
 emit_comment (const char *str)
 {
-  if (COMP_DEBUG)
+  if (comp.debug)
     gcc_jit_block_add_comment (comp.block,
 			       NULL,
 			       str);
@@ -1842,32 +1845,32 @@ emit_PURE_P (gcc_jit_rvalue *ptr)
 static gcc_jit_rvalue *
 emit_mvar_rval (Lisp_Object mvar)
 {
-  Lisp_Object const_vld = CALL1I (comp-mvar-const-vld, mvar);
-  Lisp_Object constant = CALL1I (comp-mvar-constant, mvar);
+  Lisp_Object const_vld = CALL1I (comp-mvar-value-vld-p, mvar);
 
   if (!NILP (const_vld))
     {
-      if (COMP_DEBUG > 1)
+      Lisp_Object value = CALL1I (comp-mvar-value, mvar);
+      if (comp.debug > 1)
 	{
 	  Lisp_Object func =
-	    Fgethash (constant,
+	    Fgethash (value,
 		      CALL1I (comp-ctxt-byte-func-to-func-h, Vcomp_ctxt),
 		      Qnil);
 
 	  emit_comment (
 	    SSDATA (
 	      Fprin1_to_string (
-		NILP (func) ? constant : CALL1I (comp-func-c-name, func),
+		NILP (func) ? value : CALL1I (comp-func-c-name, func),
 		Qnil)));
 	}
-      if (FIXNUMP (constant))
+      if (FIXNUMP (value))
 	{
 	  /* We can still emit directly objects that are self-contained in a
 	     word (read fixnums).  */
-          return emit_rvalue_from_lisp_obj (constant);
+          return emit_rvalue_from_lisp_obj (value);
 	}
       /* Other const objects are fetched from the reloc array.  */
-      return emit_lisp_obj_rval (constant);
+      return emit_lisp_obj_rval (value);
     }
 
   return gcc_jit_lvalue_as_rvalue (emit_mvar_lval (mvar));
@@ -2131,9 +2134,9 @@ emit_limple_insn (Lisp_Object insn)
 			       n);
       emit_cond_jump (test, target2, target1);
     }
-  else if (EQ (op, Qphi))
+  else if (EQ (op, Qphi) || EQ (op, Qassume))
     {
-      /* Nothing to do for phis into the backend.  */
+      /* Nothing to do for phis or assumes in the backend.  */
     }
   else if (EQ (op, Qpush_handler))
     {
@@ -2368,12 +2371,13 @@ static gcc_jit_rvalue *
 emit_call_with_type_hint (gcc_jit_function *func, Lisp_Object insn,
 			  Lisp_Object type)
 {
-  bool type_hint = EQ (CALL1I (comp-mvar-type, SECOND (insn)), type);
+  bool hint_match =
+    !NILP (CALL2I (comp-mvar-type-hint-match-p, SECOND (insn), type));
   gcc_jit_rvalue *args[] =
     { emit_mvar_rval (SECOND (insn)),
       gcc_jit_context_new_rvalue_from_int (comp.ctxt,
 					   comp.bool_type,
-					   type_hint) };
+					   hint_match) };
 
   return gcc_jit_context_new_call (comp.ctxt, NULL, func, 2, args);
 }
@@ -2383,13 +2387,14 @@ static gcc_jit_rvalue *
 emit_call2_with_type_hint (gcc_jit_function *func, Lisp_Object insn,
 			   Lisp_Object type)
 {
-  bool type_hint = EQ (CALL1I (comp-mvar-type, SECOND (insn)), type);
+  bool hint_match =
+    !NILP (CALL2I (comp-mvar-type-hint-match-p, SECOND (insn), type));
   gcc_jit_rvalue *args[] =
     { emit_mvar_rval (SECOND (insn)),
       emit_mvar_rval (THIRD (insn)),
       gcc_jit_context_new_rvalue_from_int (comp.ctxt,
 					   comp.bool_type,
-					   type_hint) };
+					   hint_match) };
 
   return gcc_jit_context_new_call (comp.ctxt, NULL, func, 3, args);
 }
@@ -2566,7 +2571,7 @@ emit_static_object (const char *name, Lisp_Object obj)
 				  0, NULL, 0);
   DECL_BLOCK (block, f);
 
-  if (COMP_DEBUG > 1)
+  if (comp.debug > 1)
     {
       char *comment = memcpy (xmalloc (len), p, len);
       for (ptrdiff_t i = 0; i < len - 1; i++)
@@ -2789,10 +2794,8 @@ emit_ctxt_code (void)
 {
   /* Emit optimize qualities.  */
   Lisp_Object opt_qly[] =
-    { Fcons (Qcomp_speed,
-	     Fsymbol_value (Qcomp_speed)),
-      Fcons (Qcomp_debug,
-	     Fsymbol_value (Qcomp_debug)),
+    { Fcons (Qcomp_speed, make_fixnum (comp.speed)),
+      Fcons (Qcomp_debug, make_fixnum (comp.debug)),
       Fcons (Qgccjit,
 	     Fcomp_libgccjit_version ()) };
   emit_static_object (TEXT_OPTIM_QLY_SYM, Flist (ARRAYELTS (opt_qly), opt_qly));
@@ -4028,7 +4031,7 @@ make_directory_wrapper_1 (Lisp_Object ignore)
 
 DEFUN ("comp-el-to-eln-filename", Fcomp_el_to_eln_filename,
        Scomp_el_to_eln_filename, 1, 2, 0,
-       doc: /* Given a source FILENAME return the corresponding .eln filename.
+       doc: /* Return the corresponding .eln filename for source FILENAME.
 If BASE-DIR is nil use the first entry in `comp-eln-load-path'.  */)
   (Lisp_Object filename, Lisp_Object base_dir)
 {
@@ -4170,7 +4173,8 @@ DEFUN ("comp--install-trampoline", Fcomp__install_trampoline,
 
 DEFUN ("comp--init-ctxt", Fcomp__init_ctxt, Scomp__init_ctxt,
        0, 0, 0,
-       doc: /* Initialize the native compiler context. Return t on success.  */)
+       doc: /* Initialize the native compiler context.
+Return t on success.  */)
   (void)
 {
   load_gccjit_if_necessary (true);
@@ -4211,26 +4215,6 @@ DEFUN ("comp--init-ctxt", Fcomp__init_ctxt, Scomp__init_ctxt,
     }
 
   comp.ctxt = gcc_jit_context_acquire ();
-
-  if (COMP_DEBUG)
-    {
-      gcc_jit_context_set_bool_option (comp.ctxt,
-				       GCC_JIT_BOOL_OPTION_DEBUGINFO,
-				       1);
-    }
-  if (COMP_DEBUG > 2)
-    {
-      logfile = fopen ("libgccjit.log", "w");
-      gcc_jit_context_set_logfile (comp.ctxt,
-				   logfile,
-				   0, 0);
-      gcc_jit_context_set_bool_option (comp.ctxt,
-				       GCC_JIT_BOOL_OPTION_KEEP_INTERMEDIATES,
-				       1);
-      gcc_jit_context_set_bool_option (comp.ctxt,
-				       GCC_JIT_BOOL_OPTION_DUMP_EVERYTHING,
-				       1);
-    }
 
   comp.void_type = gcc_jit_context_get_type (comp.ctxt, GCC_JIT_TYPE_VOID);
   comp.void_ptr_type =
@@ -4348,8 +4332,7 @@ DEFUN ("comp-native-driver-options-effective-p",
        Fcomp_native_driver_options_effective_p,
        Scomp_native_driver_options_effective_p,
        0, 0, 0,
-       doc: /* Return t if `comp-native-driver-options' is
-	       effective nil otherwise.  */)
+       doc: /* Return t if `comp-native-driver-options' is effective.  */)
   (void)
 {
 #if defined (LIBGCCJIT_HAVE_gcc_jit_context_add_driver_option)  \
@@ -4395,7 +4378,7 @@ restore_sigmask (void)
 DEFUN ("comp--compile-ctxt-to-file", Fcomp__compile_ctxt_to_file,
        Scomp__compile_ctxt_to_file,
        1, 1, 0,
-       doc: /* Compile as native code the current context to file FILENAME.  */)
+       doc: /* Compile the current context as native code to file FILENAME.  */)
   (Lisp_Object filename)
 {
   load_gccjit_if_necessary (true);
@@ -4403,10 +4386,31 @@ DEFUN ("comp--compile-ctxt-to-file", Fcomp__compile_ctxt_to_file,
   CHECK_STRING (filename);
   Lisp_Object base_name = Fsubstring (filename, Qnil, make_fixnum (-4));
 
+  comp.speed = XFIXNUM (CALL1I (comp-ctxt-speed, Vcomp_ctxt));
+  comp.debug = XFIXNUM (CALL1I (comp-ctxt-debug, Vcomp_ctxt));
+
+  if (comp.debug)
+      gcc_jit_context_set_bool_option (comp.ctxt,
+				       GCC_JIT_BOOL_OPTION_DEBUGINFO,
+				       1);
+  if (comp.debug > 2)
+    {
+      logfile = fopen ("libgccjit.log", "w");
+      gcc_jit_context_set_logfile (comp.ctxt,
+				   logfile,
+				   0, 0);
+      gcc_jit_context_set_bool_option (comp.ctxt,
+				       GCC_JIT_BOOL_OPTION_KEEP_INTERMEDIATES,
+				       1);
+      gcc_jit_context_set_bool_option (comp.ctxt,
+				       GCC_JIT_BOOL_OPTION_DUMP_EVERYTHING,
+				       1);
+    }
+
   gcc_jit_context_set_int_option (comp.ctxt,
 				  GCC_JIT_INT_OPTION_OPTIMIZATION_LEVEL,
-				  COMP_SPEED < 0 ? 0
-				  : (COMP_SPEED > 3 ? 3 : COMP_SPEED));
+				  comp.speed < 0 ? 0
+				  : (comp.speed > 3 ? 3 : comp.speed));
   comp.d_default_idx =
     CALL1I (comp-data-container-idx, CALL1I (comp-ctxt-d-default, Vcomp_ctxt));
   comp.d_impure_idx =
@@ -4456,11 +4460,11 @@ DEFUN ("comp--compile-ctxt-to-file", Fcomp__compile_ctxt_to_file,
 
   add_driver_options ();
 
-  if (COMP_DEBUG)
+  if (comp.debug)
       gcc_jit_context_dump_to_file (comp.ctxt,
 				    format_string ("%s.c", SSDATA (base_name)),
 				    1);
-  if (COMP_DEBUG > 2)
+  if (comp.debug > 2)
     gcc_jit_context_dump_reproducer_to_file (comp.ctxt, "comp_reproducer.c");
 
   Lisp_Object tmp_file =
@@ -4487,8 +4491,10 @@ DEFUN ("comp--compile-ctxt-to-file", Fcomp__compile_ctxt_to_file,
 
 DEFUN ("comp-libgccjit-version", Fcomp_libgccjit_version,
        Scomp_libgccjit_version, 0, 0, 0,
-       doc: /* Return the libgccjit version in use in the form
-(MAJOR MINOR PATCHLEVEL) or nil if unknown (pre GCC10).  */)
+       doc: /* Return libgccjit version in use.
+
+The return value has the form (MAJOR MINOR PATCHLEVEL) or nil if
+unknown (before GCC version 10).  */)
   (void)
 {
 #if defined (LIBGCCJIT_HAVE_gcc_jit_version) || defined (WINDOWSNT)
@@ -4970,8 +4976,8 @@ make_subr (Lisp_Object symbol_name, Lisp_Object minarg, Lisp_Object maxarg,
 
 DEFUN ("comp--register-lambda", Fcomp__register_lambda, Scomp__register_lambda,
        7, 7, 0,
-       doc: /* This gets called by top_level_run during load phase to register
-	       anonymous lambdas.  */)
+       doc: /* Register anonymous lambda.
+This gets called by top_level_run during the load phase.  */)
   (Lisp_Object reloc_idx, Lisp_Object minarg, Lisp_Object maxarg,
    Lisp_Object c_name, Lisp_Object doc_idx, Lisp_Object intspec,
    Lisp_Object comp_u)
@@ -4998,8 +5004,8 @@ DEFUN ("comp--register-lambda", Fcomp__register_lambda, Scomp__register_lambda,
 
 DEFUN ("comp--register-subr", Fcomp__register_subr, Scomp__register_subr,
        7, 7, 0,
-       doc: /* This gets called by top_level_run during load phase to register
-	       each exported subr.  */)
+       doc: /* Register exported subr.
+This gets called by top_level_run during the load phase.  */)
   (Lisp_Object name, Lisp_Object minarg, Lisp_Object maxarg,
    Lisp_Object c_name, Lisp_Object doc_idx, Lisp_Object intspec,
    Lisp_Object comp_u)
@@ -5024,8 +5030,8 @@ DEFUN ("comp--register-subr", Fcomp__register_subr, Scomp__register_subr,
 
 DEFUN ("comp--late-register-subr", Fcomp__late_register_subr,
        Scomp__late_register_subr, 7, 7, 0,
-       doc: /* This gets called by late_top_level_run during load
-	       phase to register each exported subr.  */)
+       doc: /* Register exported subr.
+This gets called by late_top_level_run during the load phase.  */)
   (Lisp_Object name, Lisp_Object minarg, Lisp_Object maxarg,
    Lisp_Object c_name, Lisp_Object doc, Lisp_Object intspec,
    Lisp_Object comp_u)
@@ -5052,8 +5058,7 @@ file_in_eln_sys_dir (Lisp_Object filename)
 /* Load related routines.  */
 DEFUN ("native-elisp-load", Fnative_elisp_load, Snative_elisp_load, 1, 2, 0,
        doc: /* Load native elisp code FILENAME.
-	       LATE_LOAD has to be non-nil when loading for deferred
-	       compilation.  */)
+LATE_LOAD has to be non-nil when loading for deferred compilation.  */)
   (Lisp_Object filename, Lisp_Object late_load)
 {
   CHECK_STRING (filename);
@@ -5098,8 +5103,7 @@ DEFUN ("native-elisp-load", Fnative_elisp_load, Snative_elisp_load, 1, 2, 0,
 
 DEFUN ("native-comp-available-p", Fnative_comp_available_p,
        Snative_comp_available_p, 0, 0, 0,
-       doc: /* Returns t if native compilation of Lisp files is available in
-this instance of Emacs, nil otherwise.  */)
+       doc: /* Return non-nil if native compilation support is built-in.  */)
   (void)
 {
 #ifdef HAVE_NATIVE_COMP
@@ -5116,11 +5120,10 @@ syms_of_comp (void)
 #ifdef HAVE_NATIVE_COMP
   /* Compiler control customizes.  */
   DEFVAR_BOOL ("comp-deferred-compilation", comp_deferred_compilation,
-	       doc: /* If non-nil compile asyncronously all .elc files
-being loaded.
+	       doc: /* If non-nil compile loaded .elc files asynchronously.
 
-Once compilation happened each function definition is updated to the
-native compiled one.  */);
+After compilation, each function definition is updated to the native
+compiled one.  */);
   comp_deferred_compilation = true;
 
   DEFSYM (Qcomp_speed, "comp-speed");
@@ -5134,6 +5137,7 @@ native compiled one.  */);
   DEFSYM (Qcallref, "callref");
   DEFSYM (Qdirect_call, "direct-call");
   DEFSYM (Qdirect_callref, "direct-callref");
+  DEFSYM (Qassume, "assume");
   DEFSYM (Qsetimm, "setimm");
   DEFSYM (Qreturn, "return");
   DEFSYM (Qcomp_mvar, "comp-mvar");
@@ -5263,15 +5267,15 @@ native compiled one.  */);
   DEFVAR_LISP ("comp-subr-list", Vcomp_subr_list,
 	       doc: /* List of all defined subrs.  */);
   DEFVAR_LISP ("comp-abi-hash", Vcomp_abi_hash,
-	       doc: /* String signing the ABI exposed to .eln files.  */);
+	       doc: /* String signing the .eln files ABI.  */);
   Vcomp_abi_hash = Qnil;
   DEFVAR_LISP ("comp-native-version-dir", Vcomp_native_version_dir,
 	       doc: /* Directory in use to disambiguate eln compatibility.  */);
   Vcomp_native_version_dir = Qnil;
 
   DEFVAR_LISP ("comp-deferred-pending-h", Vcomp_deferred_pending_h,
-	       doc: /* Hash table symbol-name -> function-value.  For
-		       internal use during  */);
+	       doc: /* Hash table symbol-name -> function-value.
+For internal use.  */);
   Vcomp_deferred_pending_h = CALLN (Fmake_hash_table, QCtest, Qeq);
 
   DEFVAR_LISP ("comp-eln-to-el-h", Vcomp_eln_to_el_h,
@@ -5291,9 +5295,8 @@ The last directory of this list is assumed to be the system one.  */);
   Vcomp_eln_load_path = Fcons (build_string ("../native-lisp/"), Qnil);
 
   DEFVAR_BOOL ("comp-enable-subr-trampolines", comp_enable_subr_trampolines,
-	       doc: /* When non-nil enable trampoline synthesis
-		       triggerd by `fset' making primitives
-		       redefinable effectivelly.  */);
+	       doc: /* If non-nil, enable trampoline synthesis triggered by `fset'.
+This makes primitives redefinable effectively.  */);
 
   DEFVAR_LISP ("comp-installed-trampolines-h", Vcomp_installed_trampolines_h,
 	       doc: /* Hash table subr-name -> installed trampoline.

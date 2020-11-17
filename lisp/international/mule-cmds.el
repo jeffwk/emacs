@@ -55,6 +55,7 @@
 
 ;; Keep "C-x C-m ..." for mule specific commands.
 (define-key ctl-x-map "\C-m" mule-keymap)
+(define-key ctl-x-map "\\" 'activate-transient-input-method)
 
 (defvar describe-language-environment-map
   (let ((map (make-sparse-keymap "Describe Language Environment")))
@@ -139,8 +140,8 @@
       `(menu-item "Set Coding Systems" ,set-coding-system-map))
 
     (bindings--define-key map [separator-input-method] menu-bar-separator)
-    (bindings--define-key map [describe-input-method]
-      '(menu-item "Describe Input Method"  describe-input-method))
+    (bindings--define-key map [activate-transient-input-method]
+      '(menu-item "Transient Input Method" activate-transient-input-method))
     (bindings--define-key map [set-input-method]
       '(menu-item "Select Input Method..." set-input-method))
     (bindings--define-key map [toggle-input-method]
@@ -490,8 +491,8 @@ non-nil, it is used to sort CODINGS instead."
 				 0)))
 			   1)
 			 ))))))
-      (sort codings (function (lambda (x y)
-				(> (funcall func x) (funcall func y))))))))
+      (sort codings (lambda (x y)
+                      (> (funcall func x) (funcall func y)))))))
 
 (defun find-coding-systems-region (from to)
   "Return a list of proper coding systems to encode a text between FROM and TO.
@@ -887,7 +888,7 @@ It is highly recommended to fix it before writing to a file."
 
     ;; Change elements of the list to (coding . base-coding).
     (setq default-coding-system
-	  (mapcar (function (lambda (x) (cons x (coding-system-base x))))
+          (mapcar (lambda (x) (cons x (coding-system-base x)))
 		  default-coding-system))
 
     (if (and auto-cs (not no-other-defaults))
@@ -1081,7 +1082,7 @@ it asks the user to select a proper coding system."
     (if (fboundp select-safe-coding-system-function)
 	(funcall select-safe-coding-system-function
 		 (point-min) (point-max) coding
-		 (function (lambda (x) (coding-system-get x :mime-charset))))
+                 (lambda (x) (coding-system-get x :mime-charset)))
       coding)))
 
 ;;; Language support stuff.
@@ -1260,7 +1261,7 @@ This returns a language environment name as a string."
 	 (name (completing-read prompt
 				language-info-alist
 				(and key
-				     (function (lambda (elm) (and (listp elm) (assq key elm)))))
+                                     (lambda (elm) (and (listp elm) (assq key elm))))
 				t nil nil default)))
     (if (and (> (length name) 0)
 	     (or (not key)
@@ -1343,6 +1344,29 @@ This is the input method activated automatically by the command
   :type '(choice (const nil)
                  mule-input-method-string)
   :set-after '(current-language-environment))
+
+(defcustom default-transient-input-method nil
+  "Default transient input method.
+This is the input method activated by the command
+`activate-transient-input-method' (\\[activate-transient-input-method])."
+  :link  '(custom-manual "(emacs)Input Methods")
+  :group 'mule
+  :type '(choice (const nil)
+                 mule-input-method-string)
+  :set-after '(current-language-environment)
+  :version "28.1")
+
+(defvar current-transient-input-method nil
+  "The current input method temporarily enabled by `activate-transient-input-method'.
+If nil, that means no transient input method is active now.")
+(make-variable-buffer-local 'current-transient-input-method)
+(put 'current-transient-input-method 'permanent-local t)
+
+(defvar previous-transient-input-method nil
+  "The input method that was active before enabling the transient input method.
+If nil, that means no previous input method was active.")
+(make-variable-buffer-local 'previous-transient-input-method)
+(put 'previous-transient-input-method 'permanent-local t)
 
 (put 'input-method-function 'permanent-local t)
 
@@ -1478,7 +1502,8 @@ If INPUT-METHOD is nil, deactivate any current input method."
 (defun deactivate-input-method ()
   "Turn off the current input method."
   (when current-input-method
-    (add-to-history 'input-method-history current-input-method)
+    (unless current-transient-input-method
+      (add-to-history 'input-method-history current-input-method))
     (unwind-protect
 	(progn
 	  (setq input-method-function nil
@@ -1540,7 +1565,9 @@ which marks the variable `default-input-method' as set for Custom buffers."
   (if toggle-input-method-active
       (error "Recursive use of `toggle-input-method'"))
   (if (and current-input-method (not arg))
-      (deactivate-input-method)
+      (if current-transient-input-method
+          (deactivate-transient-input-method)
+        (deactivate-input-method))
     (let ((toggle-input-method-active t)
 	  (default (or (car input-method-history) default-input-method)))
       (if (and arg default (equal current-input-method default)
@@ -1558,6 +1585,42 @@ which marks the variable `default-input-method' as set for Custom buffers."
 	    (setq default-input-method current-input-method)
 	  (when interactive
 	    (customize-mark-as-set 'default-input-method)))))))
+
+(defun activate-transient-input-method (&optional arg interactive)
+  "Select and enable a transient input method for the current buffer.
+If `default-transient-input-method' was not yet defined, prompt for it."
+  (interactive "P\np")
+  (when (or arg (not default-transient-input-method))
+    (let* ((default (or (car input-method-history) default-input-method))
+           (input-method
+            (read-input-method-name
+             (format-prompt "Transient input method" default)
+             default t)))
+      (setq default-transient-input-method input-method)
+      (when interactive
+        (customize-mark-as-set 'default-transient-input-method))))
+  (let* ((clearfun (make-symbol "clear-transient-input-method"))
+         (exitfun
+          (lambda ()
+            (deactivate-transient-input-method)
+            (remove-hook 'input-method-after-insert-chunk-hook clearfun))))
+    (fset clearfun (lambda () (funcall exitfun)))
+    (add-hook 'input-method-after-insert-chunk-hook clearfun)
+    (setq previous-transient-input-method current-input-method)
+    (when previous-transient-input-method
+      (deactivate-input-method))
+    (activate-input-method default-transient-input-method)
+    (setq current-transient-input-method default-transient-input-method)
+    exitfun))
+
+(defun deactivate-transient-input-method ()
+  "Disable currently active transient input method for the current buffer."
+  (when current-transient-input-method
+    (deactivate-input-method)
+    (when previous-transient-input-method
+      (activate-input-method previous-transient-input-method)
+      (setq previous-transient-input-method nil))
+    (setq current-transient-input-method nil)))
 
 (autoload 'help-buffer "help-mode")
 
@@ -2902,9 +2965,9 @@ STR should be a unibyte string."
   (mapconcat
    (if (and coding-system (eq (coding-system-type coding-system) 'iso-2022))
        ;; Try to get a pretty description for ISO 2022 escape sequences.
-       (function (lambda (x) (or (cdr (assq x iso-2022-control-alist))
-				 (format "#x%02X" x))))
-     (function (lambda (x) (format "#x%02X" x))))
+       (lambda (x) (or (cdr (assq x iso-2022-control-alist))
+                  (format "#x%02X" x)))
+     (lambda (x) (format "#x%02X" x)))
    str " "))
 
 (defun encode-coding-char (char coding-system &optional charset)

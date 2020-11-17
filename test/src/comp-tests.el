@@ -37,7 +37,7 @@
 (defconst comp-test-dyn-src
   (concat comp-test-directory "comp-test-funcs-dyn.el"))
 
-(when (boundp 'comp-ctxt)
+(when (featurep 'nativecomp)
   (message "Compiling tests...")
   (load (native-compile comp-test-src))
   (load (native-compile comp-test-dyn-src)))
@@ -369,6 +369,12 @@ Check that the resulting binaries do not differ."
   (should (equal (interactive-form #'comp-tests-free-fun-f)
                  '(interactive))))
 
+(comp-deftest free-fun-silly-name ()
+  "Check we are able to compile a single function."
+  (eval '(defun comp-tests/free\fun-f ()) t)
+  (native-compile #'comp-tests/free\fun-f)
+  (should (subr-native-elisp-p (symbol-function #'comp-tests/free\fun-f))))
+
 (comp-deftest bug-40187 ()
   "Check function name shadowing.
 https://lists.gnu.org/archive/html/bug-gnu-emacs/2020-03/msg00914.html."
@@ -412,13 +418,40 @@ https://lists.gnu.org/archive/html/bug-gnu-emacs/2020-03/msg00914.html."
 (comp-deftest compile-forms ()
   "Verify lambda form native compilation."
   (should-error (native-compile '(+ 1 foo)))
-  (let ((f (native-compile '(lambda (x) (1+ x)))))
+  (let ((lexical-binding t)
+        (f (native-compile '(lambda (x) (1+ x)))))
     (should (subr-native-elisp-p f))
     (should (= (funcall f 2) 3)))
   (let* ((lexical-binding nil)
          (f (native-compile '(lambda (x) (1+ x)))))
     (should (subr-native-elisp-p f))
     (should (= (funcall f 2) 3))))
+
+(comp-deftest comp-test-defsubst ()
+  ;; Bug#42664, Bug#43280, Bug#44209.
+  (should-not (subr-native-elisp-p (symbol-function #'comp-test-defsubst-f))))
+
+(comp-deftest primitive-redefine-compile-44221 ()
+  "Test the compiler still works while primitives are redefined (bug#44221)."
+  (cl-letf (((symbol-function #'delete-region)
+             (lambda (_ _))))
+    (should (subr-native-elisp-p
+             (native-compile
+              '(lambda ()
+                 (delete-region (point-min) (point-max))))))))
+
+(comp-deftest and-3 ()
+  (should (= (comp-test-and-3-f t) 2))
+  (should (null (comp-test-and-3-f '(1 2)))))
+
+(comp-deftest copy-insn ()
+  (should (equal (comp-test-copy-insn-f '(1 2 3 (4 5 6)))
+                 '(1 2 3 (4 5 6))))
+  (should (null (comp-test-copy-insn-f nil))))
+
+(comp-deftest comp-test-cond-rw-1 ()
+  "Check cond-rw does not break target blocks with multiple predecessor."
+  (should (null (comp-test-cond-rw-1-2-f))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -656,8 +689,8 @@ https://lists.gnu.org/archive/html/bug-gnu-emacs/2020-03/msg00914.html."
   (cl-loop for y in insn
            when (cond
                  ((consp y) (comp-tests-mentioned-p x y))
-                 ((and (comp-mvar-p y) (comp-mvar-const-vld y))
-                  (equal (comp-mvar-constant y) x))
+                 ((and (comp-mvar-p y) (comp-mvar-value-vld-p y))
+                  (equal (comp-mvar-value y) x))
                  (t (equal x y)))
              return t))
 
@@ -667,28 +700,29 @@ https://lists.gnu.org/archive/html/bug-gnu-emacs/2020-03/msg00914.html."
               'comment)
     (comp-tests-mentioned-p-1 x insn)))
 
-(defun comp-tests-make-insn-checker (func-name checker)
-  "Apply CHECKER to each insn in FUNC-NAME.
-CHECKER should always return nil to have a pass."
-  (should-not
-   (cl-loop
-    named checker-loop
-    with func-c-name = (comp-c-func-name func-name "F" t)
+(defun comp-tests-map-checker (func-name checker)
+  "Apply CHECKER to each insn of FUNC-NAME.
+Return a list of results."
+  (cl-loop
+    with func-c-name = (comp-c-func-name (or func-name 'anonymous-lambda) "F" t)
     with f = (gethash func-c-name (comp-ctxt-funcs-h comp-ctxt))
     for bb being each hash-value of (comp-func-blocks f)
-    do (cl-loop
-        for insn in (comp-block-insns bb)
-        when (funcall checker insn)
-          do (cl-return-from checker-loop 'mentioned)))))
+    nconc
+    (cl-loop
+     for insn in (comp-block-insns bb)
+     collect (funcall checker insn))))
 
 (defun comp-tests-tco-checker (_)
   "Check that inside `comp-tests-tco-f' we have no recursion."
-  (comp-tests-make-insn-checker
-   'comp-tests-tco-f
-   (lambda (insn)
-     (or (comp-tests-mentioned-p 'comp-tests-tco-f insn)
-         (comp-tests-mentioned-p (comp-c-func-name 'comp-tests-tco-f "F" t)
-                                 insn)))))
+  (should
+   (cl-notany
+    #'identity
+    (comp-tests-map-checker
+     'comp-tests-tco-f
+     (lambda (insn)
+       (or (comp-tests-mentioned-p 'comp-tests-tco-f insn)
+           (comp-tests-mentioned-p (comp-c-func-name 'comp-tests-tco-f "F" t)
+                                   insn)))))))
 
 (comp-deftest tco ()
   "Check for tail recursion elimination."
@@ -709,13 +743,16 @@ CHECKER should always return nil to have a pass."
 
 (defun comp-tests-fw-prop-checker-1 (_)
   "Check that inside `comp-tests-fw-prop-f' `concat' and `length' are folded."
-  (comp-tests-make-insn-checker
-   'comp-tests-fw-prop-1-f
-   (lambda (insn)
-     (or (comp-tests-mentioned-p 'concat insn)
-         (comp-tests-mentioned-p 'length insn)))))
+  (should
+   (cl-notany
+    #'identity
+    (comp-tests-map-checker
+     'comp-tests-fw-prop-1-f
+     (lambda (insn)
+       (or (comp-tests-mentioned-p 'concat insn)
+           (comp-tests-mentioned-p 'length insn)))))))
 
-(comp-deftest fw-prop ()
+(comp-deftest fw-prop-1 ()
   "Some tests for forward propagation."
   (let ((comp-speed 2)
         (comp-post-pass-hooks '((comp-final comp-tests-fw-prop-checker-1))))
@@ -729,24 +766,160 @@ CHECKER should always return nil to have a pass."
     (should (subr-native-elisp-p (symbol-function #'comp-tests-fw-prop-1-f)))
     (should (= (comp-tests-fw-prop-1-f) 6))))
 
+(defun comp-tests-check-ret-type-spec (func-form type-specifier)
+  (let ((lexical-binding t)
+        (speed 2)
+        (comp-post-pass-hooks
+         `((comp-final
+            ,(lambda (_)
+               (let ((f (gethash (comp-c-func-name (cadr func-form) "F" t)
+                                 (comp-ctxt-funcs-h comp-ctxt))))
+                 (should (equal (comp-func-ret-type-specifier f)
+                                type-specifier))))))))
+    (eval func-form t)
+    (native-compile (cadr func-form))))
+
+(defconst comp-tests-type-spec-tests
+  `(((defun comp-tests-ret-type-spec-f (x)
+       x)
+     t)
+
+    ((defun comp-tests-ret-type-spec-f ()
+       1)
+     (integer 1 1))
+
+    ((defun comp-tests-ret-type-spec-f (x)
+       (if x 1 3))
+     (or (integer 1 1) (integer 3 3)))
+
+    ((defun comp-tests-ret-type-spec-f (x)
+       (let (y)
+         (if x
+             (setf y 1)
+           (setf y 2))
+         y))
+     (integer 1 2))
+
+    ((defun comp-tests-ret-type-spec-f (x)
+       (let (y)
+         (if x
+             (setf y 1)
+           (setf y 3))
+         y))
+     (or (integer 1 1) (integer 3 3)))
+
+    ((defun comp-tests-ret-type-spec-f (x)
+       (if x
+           (list x)
+         3))
+     (or cons (integer 3 3)))
+
+    ((defun comp-tests-ret-type-spec-f (x)
+       (if x
+           'foo
+         3))
+     (or (member foo) (integer 3 3)))
+
+    ((defun comp-tests-ret-type-spec-f (x)
+       (if (eq x 3)
+           x
+         'foo))
+     (or (member foo) (integer 3 3)))
+
+    ((defun comp-tests-ret-type-spec-f (x)
+       (if (eq 3 x)
+           x
+         'foo))
+     (or (member foo) (integer 3 3)))
+
+    ((defun comp-tests-ret-type-spec-f (x)
+       (if (= x 3)
+           x
+         'foo))
+     (or (member foo) (integer 3 3)))
+
+    ((defun comp-tests-ret-type-spec-f (x)
+       (if (= 3 x)
+           x
+         'foo))
+     (or (member foo) (integer 3 3)))
+
+    ;; FIXME would be nice to have (or number (member foo))
+    ((defun comp-tests-ret-type-spec-8-3-f (x)
+       (if (= x 3)
+           'foo
+         x))
+     t)
+
+    ((defun comp-tests-ret-type-spec-8-4-f (x y)
+       (if (= x y)
+           x
+         'foo))
+     (or number (member foo)))
+
+    ((defun comp-tests-ret-type-spec-9-1-f (x)
+       (comp-hint-fixnum y))
+     (integer ,most-negative-fixnum ,most-positive-fixnum))
+
+    ((defun comp-tests-ret-type-spec-f (x)
+       (comp-hint-cons x))
+     cons)
+
+    ((defun comp-tests-ret-type-spec-f (x)
+        (let (y)
+          (when x
+            (setf y 4))
+          y))
+     (or null (integer 4 4)))
+
+    ((defun comp-tests-ret-type-spec-f ()
+        (let (x
+              (y 3))
+          (setf x y)
+          y))
+     (integer 3 3))
+
+    ((defun comp-tests-ret-type-spec-f (x)
+       (let ((y 3))
+         (when x
+           (setf y x))
+         y))
+     t)
+
+    ((defun comp-tests-ret-type-spec-f (x y)
+       (eq x y))
+     boolean)))
+
+(comp-deftest ret-type-spec ()
+  "Some derived return type specifier tests."
+  (cl-loop for (func-form  type-spec) in comp-tests-type-spec-tests
+           do (comp-tests-check-ret-type-spec func-form type-spec)))
+
 (defun comp-tests-pure-checker-1 (_)
   "Check that inside `comp-tests-pure-caller-f' `comp-tests-pure-callee-f' is
  folded."
-  (comp-tests-make-insn-checker
-   'comp-tests-pure-caller-f
-   (lambda (insn)
-     (or (comp-tests-mentioned-p 'comp-tests-pure-callee-f insn)
-         (comp-tests-mentioned-p (comp-c-func-name 'comp-tests-pure-callee-f "F" t)
-                                 insn)))))
+  (should
+   (cl-notany
+    #'identity
+    (comp-tests-map-checker
+     'comp-tests-pure-caller-f
+     (lambda (insn)
+       (or (comp-tests-mentioned-p 'comp-tests-pure-callee-f insn)
+           (comp-tests-mentioned-p (comp-c-func-name
+                                    'comp-tests-pure-callee-f "F" t)
+                                   insn)))))))
 
 (defun comp-tests-pure-checker-2 (_)
   "Check that `comp-tests-pure-fibn-f' is folded."
-  (comp-tests-make-insn-checker
-   'comp-tests-pure-fibn-entry-f
-   (lambda (insn)
-     (or (comp-tests-mentioned-p 'comp-tests-pure-fibn-f insn)
-         (comp-tests-mentioned-p (comp-c-func-name 'comp-tests-pure-fibn-f "F" t)
-                                 insn)))))
+  (should
+   (cl-notany
+    #'identity
+    (comp-tests-map-checker
+     'comp-tests-pure-fibn-entry-f
+     (lambda (insn)
+       (or (comp-tests-mentioned-p 'comp-tests-pure-fibn-f insn)
+           (comp-tests-mentioned-p (comp-c-func-name 'comp-tests-pure-fibn-f "F" t)
+                                   insn)))))))
 
 (comp-deftest pure ()
   "Some tests for pure functions optimization."
@@ -760,5 +933,114 @@ CHECKER should always return nil to have a pass."
 
     (should (subr-native-elisp-p (symbol-function #'comp-tests-pure-fibn-entry-f)))
     (should (= (comp-tests-pure-fibn-entry-f) 6765))))
+
+(defvar comp-tests-cond-rw-checked-function nil
+  "Function to be checked.")
+(defun comp-tests-cond-rw-checker-val (_)
+  "Check we manage to propagate the correct return value."
+  (should
+   (cl-some
+    #'identity
+    (comp-tests-map-checker
+     comp-tests-cond-rw-checked-function
+     (lambda (insn)
+       (pcase insn
+         (`(return ,mvar)
+          (and (comp-mvar-value-vld-p mvar)
+               (eql (comp-mvar-value mvar) 123)))))))))
+
+(defvar comp-tests-cond-rw-expected-type nil
+  "Type to expect in `comp-tests-cond-rw-checker-type'.")
+(defun comp-tests-cond-rw-checker-type (_)
+  "Check we manage to propagate the correct return type."
+  (should
+   (cl-some
+    #'identity
+    (comp-tests-map-checker
+     comp-tests-cond-rw-checked-function
+     (lambda (insn)
+       (pcase insn
+         (`(return ,mvar)
+          (equal (comp-mvar-typeset mvar)
+                 comp-tests-cond-rw-expected-type))))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Range propagation tests. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(comp-deftest range-simple-union ()
+  (should (equal (comp-range-union '((-1 . 0)) '((3 . 4)))
+                 '((-1 . 0) (3 . 4))))
+  (should (equal (comp-range-union '((-1 . 2)) '((3 . 4)))
+                 '((-1 . 4))))
+  (should (equal (comp-range-union '((-1 . 3)) '((3 . 4)))
+                 '((-1 . 4))))
+  (should (equal (comp-range-union '((-1 . 4)) '((3 . 4)))
+                 '((-1 . 4))))
+  (should (equal (comp-range-union '((-1 . 5)) '((3 . 4)))
+                 '((-1 . 5))))
+  (should (equal (comp-range-union '((-1 . 0)) '())
+                 '((-1 . 0)))))
+
+(comp-deftest range-simple-intersection ()
+  (should (equal (comp-range-intersection '((-1 . 0)) '((3 . 4)))
+                 '()))
+  (should (equal (comp-range-intersection '((-1 . 2)) '((3 . 4)))
+                 '()))
+  (should (equal (comp-range-intersection '((-1 . 3)) '((3 . 4)))
+                 '((3 . 3))))
+  (should (equal (comp-range-intersection '((-1 . 4)) '((3 . 4)))
+                 '((3 . 4))))
+  (should (equal (comp-range-intersection '((-1 . 5)) '((3 . 4)))
+                 '((3 . 4))))
+  (should (equal (comp-range-intersection '((-1 . 0)) '())
+                 '())))
+
+(comp-deftest union-types ()
+  (let ((comp-ctxt (make-comp-ctxt)))
+    (should (equal (comp-union-typesets '(integer) '(number))
+                   '(number)))
+    (should (equal (comp-union-typesets '(integer symbol) '(number))
+                   '(symbol number)))
+    (should (equal (comp-union-typesets '(integer symbol) '(number list))
+                   '(list symbol number)))
+    (should (equal (comp-union-typesets '(integer symbol) '())
+                   '(symbol integer)))))
+
+(comp-deftest destructure-type-spec ()
+  (should (equal (comp-type-spec-to-constraint 'symbol)
+                 (make-comp-constraint :typeset '(symbol))))
+  (should (equal (comp-type-spec-to-constraint '(or symbol number))
+                 (make-comp-constraint :typeset '(number symbol))))
+  (should-error (comp-type-spec-to-constraint '(symbol number)))
+  (should (equal (comp-type-spec-to-constraint '(member foo bar))
+                 (make-comp-constraint :typeset nil :valset '(foo bar))))
+  (should (equal (comp-type-spec-to-constraint '(integer 1 2))
+                 (make-comp-constraint :typeset nil :range '((1 . 2)))))
+  (should (equal (comp-type-spec-to-constraint '(or (integer 1 2) (integer 4 5)))
+                 (make-comp-constraint :typeset nil :range '((4 . 5) (1 . 2)))))
+  (should (equal (comp-type-spec-to-constraint '(integer * 2))
+                 (make-comp-constraint :typeset nil :range '((- . 2)))))
+  (should (equal (comp-type-spec-to-constraint '(integer 1 *))
+                 (make-comp-constraint :typeset nil :range '((1 . +)))))
+  (should (equal (comp-type-spec-to-constraint '(integer * *))
+                 (make-comp-constraint :typeset nil :range '((- . +)))))
+  (should (equal (comp-type-spec-to-constraint '(or (integer 1 2)
+                                                    (member foo bar)))
+                 (make-comp-constraint :typeset nil
+                                       :valset '(foo bar)
+                                       :range '((1 . 2)))))
+  (should (equal (comp-type-spec-to-constraint
+                  '(function (t t) cons))
+                 (make-comp-constraint-f
+                  :args `(,(make-comp-constraint :typeset '(t))
+                          ,(make-comp-constraint :typeset '(t)))
+                  :ret (make-comp-constraint :typeset '(cons)))))
+  (should (equal (comp-type-spec-to-constraint
+                  '(function ((or integer symbol)) float))
+                 (make-comp-constraint-f
+                  :args `(,(make-comp-constraint :typeset '(symbol integer)))
+                  :ret (make-comp-constraint :typeset '(float))))))
 
 ;;; comp-tests.el ends here

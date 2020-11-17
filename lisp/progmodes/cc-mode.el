@@ -94,10 +94,10 @@
 
 (eval-when-compile
   (let ((load-path
-	 (if (and (boundp 'byte-compile-dest-file)
-		  (stringp byte-compile-dest-file))
-	     (cons (file-name-directory byte-compile-dest-file) load-path)
-	   load-path)))
+     (if (and (boundp 'byte-compile-dest-file)
+          (stringp byte-compile-dest-file))
+         (cons (file-name-directory byte-compile-dest-file) load-path)
+       load-path)))
     (load "cc-bytecomp" nil t)))
 
 (cc-require 'cc-defs)
@@ -112,7 +112,7 @@
 
 ;; Silence the compiler.
 (cc-bytecomp-defvar adaptive-fill-first-line-regexp) ; Emacs
-(cc-bytecomp-defun run-mode-hooks)	; Emacs 21.1
+(cc-bytecomp-defun run-mode-hooks)  ; Emacs 21.1
 
 ;; We set this variable during mode init, yet we don't require
 ;; font-lock.
@@ -179,14 +179,14 @@
     (save-restriction
       (widen)
       (c-save-buffer-state ()
-	(c-clear-char-properties (point-min) (point-max) 'category)
-	(c-clear-char-properties (point-min) (point-max) 'syntax-table)
-	(c-clear-char-properties (point-min) (point-max) 'c-fl-syn-tab)
-	(c-clear-char-properties (point-min) (point-max) 'c-is-sws)
-	(c-clear-char-properties (point-min) (point-max) 'c-in-sws)
-	(c-clear-char-properties (point-min) (point-max) 'c-type)
-	(if (c-major-mode-is 'awk-mode)
-	    (c-clear-char-properties (point-min) (point-max) 'c-awk-NL-prop))))
+    (c-clear-char-properties (point-min) (point-max) 'category)
+    (c-clear-char-properties (point-min) (point-max) 'syntax-table)
+    (c-clear-char-properties (point-min) (point-max) 'c-fl-syn-tab)
+    (c-clear-char-properties (point-min) (point-max) 'c-is-sws)
+    (c-clear-char-properties (point-min) (point-max) 'c-in-sws)
+    (c-clear-char-properties (point-min) (point-max) 'c-type)
+    (if (c-major-mode-is 'awk-mode)
+        (c-clear-char-properties (point-min) (point-max) 'c-awk-NL-prop))))
     (setq c-buffer-is-cc-mode nil)))
 
 (defun c-init-language-vars-for (mode)
@@ -196,13 +196,13 @@ directly supported by CC Mode.  This can be used instead of the
 those, rather than a derived language defined through the language
 variable system (see \"cc-langs.el\")."
   (cond ((eq mode 'c-mode)    (c-init-language-vars c-mode))
-	((eq mode 'c++-mode)  (c-init-language-vars c++-mode))
-	((eq mode 'objc-mode) (c-init-language-vars objc-mode))
-	((eq mode 'java-mode) (c-init-language-vars java-mode))
-	((eq mode 'idl-mode)  (c-init-language-vars idl-mode))
-	((eq mode 'pike-mode) (c-init-language-vars pike-mode))
-	((eq mode 'awk-mode)  (c-init-language-vars awk-mode))
-	(t (error "Unsupported mode %s" mode))))
+    ((eq mode 'c++-mode)  (c-init-language-vars c++-mode))
+    ((eq mode 'objc-mode) (c-init-language-vars objc-mode))
+    ((eq mode 'java-mode) (c-init-language-vars java-mode))
+    ((eq mode 'idl-mode)  (c-init-language-vars idl-mode))
+    ((eq mode 'pike-mode) (c-init-language-vars pike-mode))
+    ((eq mode 'awk-mode)  (c-init-language-vars awk-mode))
+    (t (error "Unsupported mode %s" mode))))
 
 ;;;###autoload
 (defun c-initialize-cc-mode (&optional new-style-init)
@@ -216,34 +216,34 @@ control).  See \"cc-mode.el\" for more info."
   (setq c-buffer-is-cc-mode t)
 
   (let ((initprop 'cc-mode-is-initialized)
-	c-initialization-ok)
+    c-initialization-ok)
     (unless (get 'c-initialize-cc-mode initprop)
       (unwind-protect
-	  (progn
-	    (put 'c-initialize-cc-mode initprop t)
-	    (c-initialize-builtin-style)
-	    (run-hooks 'c-initialization-hook)
-	    ;; Fix obsolete variables.
-	    (if (boundp 'c-comment-continuation-stars)
-		(setq c-block-comment-prefix c-comment-continuation-stars))
-	    (add-hook 'change-major-mode-hook 'c-leave-cc-mode-mode)
-	    ;; Connect up with Emacs's electric-pair-mode
-	    (eval-after-load "elec-pair"
-	      '(when (boundp 'electric-pair-inhibit-predicate)
-		 (dolist (buf (buffer-list))
-		   (with-current-buffer buf
-		     (when c-buffer-is-cc-mode
-		       (make-local-variable 'electric-pair-inhibit-predicate)
-		       (setq electric-pair-inhibit-predicate
-			     #'c-electric-pair-inhibit-predicate))))))
-	    (setq c-initialization-ok t)
-	    ;; Connect up with Emacs's electric-indent-mode, for >= Emacs 24.4
+      (progn
+        (put 'c-initialize-cc-mode initprop t)
+        (c-initialize-builtin-style)
+        (run-hooks 'c-initialization-hook)
+        ;; Fix obsolete variables.
+        (if (boundp 'c-comment-continuation-stars)
+        (setq c-block-comment-prefix c-comment-continuation-stars))
+        (add-hook 'change-major-mode-hook 'c-leave-cc-mode-mode)
+        ;; Connect up with Emacs's electric-pair-mode
+        (eval-after-load "elec-pair"
+          '(when (boundp 'electric-pair-inhibit-predicate)
+         (dolist (buf (buffer-list))
+           (with-current-buffer buf
+             (when c-buffer-is-cc-mode
+               (make-local-variable 'electric-pair-inhibit-predicate)
+               (setq electric-pair-inhibit-predicate
+                 #'c-electric-pair-inhibit-predicate))))))
+        (setq c-initialization-ok t)
+        ;; Connect up with Emacs's electric-indent-mode, for >= Emacs 24.4
             (when (fboundp 'electric-indent-local-mode)
-	      (add-hook 'electric-indent-mode-hook 'c-electric-indent-mode-hook)
+          (add-hook 'electric-indent-mode-hook 'c-electric-indent-mode-hook)
               (add-hook 'electric-indent-local-mode-hook
                         'c-electric-indent-local-mode-hook)))
-	;; Will try initialization hooks again if they failed.
-	(put 'c-initialize-cc-mode initprop c-initialization-ok))))
+    ;; Will try initialization hooks again if they failed.
+    (put 'c-initialize-cc-mode initprop c-initialization-ok))))
 
   (unless new-style-init
     (c-init-language-vars-for 'c-mode)))
@@ -264,17 +264,17 @@ control).  See \"cc-mode.el\" for more info."
   ;; sixth argument for SYSTEM-FLAG in emacsen that support it
   ;; (currently only Emacs >= 21.2).
   (let ((table (or (and (boundp name) (symbol-value name))
-		   (progn (condition-case nil
+           (progn (condition-case nil
                               (define-abbrev-table name nil doc)
                             (wrong-number-of-arguments ;E.g. Emacs<23.
                              (eval `(defvar ,name nil ,doc))
                              (define-abbrev-table name nil)))
-			  (symbol-value name)))))
+              (symbol-value name)))))
     (while defs
       (condition-case nil
-	  (apply 'define-abbrev table (append (car defs) '(t)))
-	(wrong-number-of-arguments
-	 (apply 'define-abbrev table (car defs))))
+      (apply 'define-abbrev table (append (car defs) '(t)))
+    (wrong-number-of-arguments
+     (apply 'define-abbrev table (car defs))))
       (setq defs (cdr defs)))))
 (put 'c-define-abbrev-table 'lisp-indent-function 1)
 
@@ -282,23 +282,23 @@ control).  See \"cc-mode.el\" for more info."
   ;; Insert the standard keywords which may need electric indentation into the
   ;; current mode's abbreviation table.
   (let ((table (intern (concat (symbol-name major-mode) "-abbrev-table")))
-	(defs c-std-abbrev-keywords)
-	)
+    (defs c-std-abbrev-keywords)
+    )
     (unless (and (boundp table)
-		 (abbrev-table-p (symbol-value table)))
+         (abbrev-table-p (symbol-value table)))
       (define-abbrev-table table nil))
     (setq local-abbrev-table (symbol-value table))
     (while defs
       (unless (intern-soft (car defs) local-abbrev-table) ; Don't overwrite the
-					; abbrev's use count.
-	(condition-case nil
-	    (define-abbrev (symbol-value table)
-	      (car defs) (car defs)
-	      'c-electric-continued-statement 0 t)
-	  (wrong-number-of-arguments
-	   (define-abbrev (symbol-value table)
-	     (car defs) (car defs)
-	     'c-electric-continued-statement 0))))
+                    ; abbrev's use count.
+    (condition-case nil
+        (define-abbrev (symbol-value table)
+          (car defs) (car defs)
+          'c-electric-continued-statement 0 t)
+      (wrong-number-of-arguments
+       (define-abbrev (symbol-value table)
+         (car defs) (car defs)
+         'c-electric-continued-statement 0))))
       (setq defs (cdr defs)))))
 
 (defun c-bind-special-erase-keys ()
@@ -306,10 +306,10 @@ control).  See \"cc-mode.el\" for more info."
   ;; to the proper keys depending on `normal-erase-is-backspace'.
   (if normal-erase-is-backspace
       (progn
-	(define-key c-mode-base-map (kbd "C-c C-<delete>")
-	  'c-hungry-delete-forward)
-	(define-key c-mode-base-map (kbd "C-c C-<backspace>")
-	  'c-hungry-delete-backwards))
+    (define-key c-mode-base-map (kbd "C-c C-<delete>")
+      'c-hungry-delete-forward)
+    (define-key c-mode-base-map (kbd "C-c C-<backspace>")
+      'c-hungry-delete-backwards))
     (define-key c-mode-base-map (kbd "C-c C-<delete>")
       'c-hungry-delete-backwards)
     (define-key c-mode-base-map (kbd "C-c C-<backspace>")
@@ -327,25 +327,25 @@ control).  See \"cc-mode.el\" for more info."
   (define-key c-mode-base-map [(control meta h)] 'c-mark-function)
   (define-key c-mode-base-map "\e\C-q"    'c-indent-exp)
   (substitute-key-definition 'backward-sentence
-			     'c-beginning-of-statement
-			     c-mode-base-map global-map)
+                 'c-beginning-of-statement
+                 c-mode-base-map global-map)
   (substitute-key-definition 'forward-sentence
-			     'c-end-of-statement
-			     c-mode-base-map global-map)
+                 'c-end-of-statement
+                 c-mode-base-map global-map)
   (substitute-key-definition 'indent-new-comment-line
-			     'c-indent-new-comment-line
-			     c-mode-base-map global-map)
+                 'c-indent-new-comment-line
+                 c-mode-base-map global-map)
   (substitute-key-definition 'indent-for-tab-command
-			     ;; XXX Is this the right thing to do
-			     ;; here?
-			     'c-indent-line-or-region
-			     c-mode-base-map global-map)
+                 ;; XXX Is this the right thing to do
+                 ;; here?
+                 'c-indent-line-or-region
+                 c-mode-base-map global-map)
   (when (fboundp 'comment-indent-new-line)
     ;; indent-new-comment-line has changed name to
     ;; comment-indent-new-line in Emacs 21.
     (substitute-key-definition 'comment-indent-new-line
-			       'c-indent-new-comment-line
-			       c-mode-base-map global-map))
+                   'c-indent-new-comment-line
+                   c-mode-base-map global-map))
 
   ;; RMS says don't make these the default.
   ;; (April 2006): RMS has now approved these commands as defaults.
@@ -366,11 +366,11 @@ control).  See \"cc-mode.el\" for more info."
   ;; `fill-paragraph' and the value on `fill-paragraph-function' to
   ;; do the actual filling work.
   (substitute-key-definition 'fill-paragraph 'c-fill-paragraph
-			     c-mode-base-map global-map)
+                 c-mode-base-map global-map)
   ;; In XEmacs the default fill function is called
   ;; fill-paragraph-or-region.
   (substitute-key-definition 'fill-paragraph-or-region 'c-fill-paragraph
-			     c-mode-base-map global-map)
+                 c-mode-base-map global-map)
 
   ;; We bind the forward deletion key and (implicitly) C-d to
   ;; `c-electric-delete-forward', and the backward deletion key to
@@ -484,12 +484,12 @@ preferably use the `c-mode-menu' language constant directly."
   ;; id, else nil.
   (save-excursion
     (let ((tok-beg (progn (goto-char pos)
-			  (and (c-beginning-of-current-token) (point))))
-	  (tok-end (progn (goto-char pos)
-			  (and (c-end-of-current-token) (point)))))
+              (and (c-beginning-of-current-token) (point))))
+      (tok-end (progn (goto-char pos)
+              (and (c-end-of-current-token) (point)))))
       (when (and tok-beg tok-end)
-	(c-unfind-type (buffer-substring-no-properties tok-beg tok-end))
-	t))))
+    (c-unfind-type (buffer-substring-no-properties tok-beg tok-end))
+    t))))
 
 (defun c-unfind-coalesced-tokens (beg end)
   ;; If removing the region (beg end) would coalesce an identifier ending at
@@ -500,28 +500,28 @@ preferably use the `c-mode-menu' language constant directly."
     (when (< beg end)
       (goto-char beg)
       (when
-	  (and (not (bobp))
-	       (progn (c-backward-syntactic-ws) (eq (point) beg))
-	       (/= (skip-chars-backward c-symbol-chars (1- (point))) 0)
-	       (progn (goto-char beg) (c-forward-syntactic-ws) (<= (point) end))
-	       (> (point) beg)
-	       (goto-char end)
-	       (looking-at c-symbol-char-key))
-	(goto-char beg)
-	(c-simple-skip-symbol-backward)
-	(c-unfind-type (buffer-substring-no-properties (point) beg)))
+      (and (not (bobp))
+           (progn (c-backward-syntactic-ws) (eq (point) beg))
+           (/= (skip-chars-backward c-symbol-chars (1- (point))) 0)
+           (progn (goto-char beg) (c-forward-syntactic-ws) (<= (point) end))
+           (> (point) beg)
+           (goto-char end)
+           (looking-at c-symbol-char-key))
+    (goto-char beg)
+    (c-simple-skip-symbol-backward)
+    (c-unfind-type (buffer-substring-no-properties (point) beg)))
 
       (goto-char end)
       (when
-	  (and (not (eobp))
-	       (progn (c-forward-syntactic-ws) (eq (point) end))
-	       (looking-at c-symbol-char-key)
-	       (progn (c-backward-syntactic-ws) (>= (point) beg))
-	       (< (point) end)
-	       (/= (skip-chars-backward c-symbol-chars (1- (point))) 0))
-	(goto-char (1+ end))
-	(c-end-of-current-token)
-	(c-unfind-type (buffer-substring-no-properties end (point)))))))
+      (and (not (eobp))
+           (progn (c-forward-syntactic-ws) (eq (point) end))
+           (looking-at c-symbol-char-key)
+           (progn (c-backward-syntactic-ws) (>= (point) beg))
+           (< (point) end)
+           (/= (skip-chars-backward c-symbol-chars (1- (point))) 0))
+    (goto-char (1+ end))
+    (c-end-of-current-token)
+    (c-unfind-type (buffer-substring-no-properties end (point)))))))
 
 ;; c-maybe-stale-found-type records a place near the region being
 ;; changed where an element of `found-types' might become stale.  It
@@ -609,7 +609,7 @@ that requires a literal mode spec at compile time."
   (when (boundp 'electric-pair-inhibit-predicate)
     (make-local-variable 'electric-pair-inhibit-predicate)
     (setq electric-pair-inhibit-predicate
-	  #'c-electric-pair-inhibit-predicate))
+      #'c-electric-pair-inhibit-predicate))
 
   ;; now set their values
   (set (make-local-variable 'parse-sexp-ignore-comments) t)
@@ -625,8 +625,8 @@ that requires a literal mode spec at compile time."
     (make-local-variable 'yank-handled-properties)
     (let ((yank-cat-handler (assq 'category yank-handled-properties)))
       (when yank-cat-handler
-	(setq yank-handled-properties (remq yank-cat-handler
-					    yank-handled-properties)))))
+    (setq yank-handled-properties (remq yank-cat-handler
+                        yank-handled-properties)))))
 
   ;; For the benefit of adaptive fill, which otherwise mis-fills.
   (setq fill-paragraph-handle-comment nil)
@@ -648,8 +648,8 @@ that requires a literal mode spec at compile time."
   (setq c-max-syn-tab-mkr nil)
 
   (when (or c-recognize-<>-arglists
-	    (c-major-mode-is 'awk-mode)
-	    (c-major-mode-is '(java-mode c-mode c++-mode objc-mode pike-mode)))
+        (c-major-mode-is 'awk-mode)
+        (c-major-mode-is '(java-mode c-mode c++-mode objc-mode pike-mode)))
     ;; We'll use the syntax-table text property to change the syntax
     ;; of some chars for this language, so do the necessary setup for
     ;; that.
@@ -671,10 +671,10 @@ that requires a literal mode spec at compile time."
   (when (boundp 'text-property-default-nonsticky)
     (make-local-variable 'text-property-default-nonsticky)
     (mapc (lambda (tprop)
-	    (unless (assq tprop text-property-default-nonsticky)
-	      (setq text-property-default-nonsticky
+        (unless (assq tprop text-property-default-nonsticky)
+          (setq text-property-default-nonsticky
                     (cons `(,tprop . t) text-property-default-nonsticky))))
-	  '(syntax-table c-fl-syn-tab category c-type)))
+      '(syntax-table c-fl-syn-tab category c-type)))
 
   ;; In Emacs 21 and later it's possible to turn off the ad-hoc
   ;; heuristic that open parens in column 0 are defun starters.  Since
@@ -698,10 +698,10 @@ that requires a literal mode spec at compile time."
     ;; awkward.  It's at least the most compatible way with the old
     ;; style init procedure.)
     (c-set-style style (not (or c-old-style-variable-behavior
-				(and (not c-style-variables-are-local-p)
-				     c-indentation-style
-				     (not (string-equal c-indentation-style
-							style)))))))
+                (and (not c-style-variables-are-local-p)
+                     c-indentation-style
+                     (not (string-equal c-indentation-style
+                            style)))))))
   (c-setup-paragraph-variables)
 
   ;; we have to do something special for c-offsets-alist so that the
@@ -725,8 +725,8 @@ that requires a literal mode spec at compile time."
 ;;   ;; Put submode indicators onto minor-mode-alist, but only once.
 ;;   (or (assq 'c-submode-indicators minor-mode-alist)
 ;;       (setq minor-mode-alist
-;; 	    (cons '(c-submode-indicators c-submode-indicators)
-;; 		  minor-mode-alist)))
+;;      (cons '(c-submode-indicators c-submode-indicators)
+;;        minor-mode-alist)))
   (c-update-modeline)
 
   ;; Install the functions that ensure that various internal caches
@@ -748,7 +748,7 @@ that requires a literal mode spec at compile time."
 (defun c-setup-doc-comment-style ()
   "Initialize the variables that depend on the value of `c-doc-comment-style'."
   (when (and (featurep 'font-lock)
-	     (symbol-value 'font-lock-mode))
+         (symbol-value 'font-lock-mode))
     ;; Force font lock mode to reinitialize itself.
     (font-lock-mode 0)
     (font-lock-mode 1)))
@@ -799,19 +799,19 @@ compatible with old code; callers should always specify it."
     (setq c-new-END (point-max))
     (save-excursion
       (let (before-change-functions after-change-functions)
-	(mapc (lambda (fn)
-		(funcall fn (point-min) (point-max)))
-	      c-get-state-before-change-functions)
-	(mapc (lambda (fn)
-		(funcall fn (point-min) (point-max)
-			 (- (point-max) (point-min))))
-	      c-before-font-lock-functions))))
+    (mapc (lambda (fn)
+        (funcall fn (point-min) (point-max)))
+          c-get-state-before-change-functions)
+    (mapc (lambda (fn)
+        (funcall fn (point-min) (point-max)
+             (- (point-max) (point-min))))
+          c-before-font-lock-functions))))
 
   (set (make-local-variable 'outline-regexp) "[^#\n\^M]")
   (set (make-local-variable 'outline-level) 'c-outline-level)
   (set (make-local-variable 'add-log-current-defun-function)
        (lambda ()
-	 (or (c-cpp-define-name) (car (c-defun-name-and-limits nil)))))
+     (or (c-cpp-define-name) (car (c-defun-name-and-limits nil)))))
   (let ((rfn (assq mode c-require-final-newline)))
     (when rfn
       (if (boundp 'mode-require-final-newline)
@@ -826,9 +826,9 @@ compatible with old code; callers should always specify it."
   (let ((elt-ptr lv-alist) elt (cownt 0))
     (while elt-ptr
       (setq elt (car elt-ptr)
-	    elt-ptr (cdr elt-ptr))
+        elt-ptr (cdr elt-ptr))
       (when (eq (car elt) 'c-file-style)
-	(setq cownt (1+ cownt))))
+    (setq cownt (1+ cownt))))
     cownt))
 
 (defun c-before-hack-hook ()
@@ -839,31 +839,31 @@ They are set only when, respectively, the pseudo variables
 This function is called from the hook `before-hack-local-variables-hook'."
   (when c-buffer-is-cc-mode
     (let ((mode-cons (assq 'mode file-local-variables-alist))
-	  (stile (cdr (assq 'c-file-style file-local-variables-alist)))
-	  (offsets (cdr (assq 'c-file-offsets file-local-variables-alist))))
+      (stile (cdr (assq 'c-file-style file-local-variables-alist)))
+      (offsets (cdr (assq 'c-file-offsets file-local-variables-alist))))
       (when mode-cons
-	(hack-one-local-variable (car mode-cons) (cdr mode-cons))
-	(setq file-local-variables-alist
-	      (delq mode-cons file-local-variables-alist)))
+    (hack-one-local-variable (car mode-cons) (cdr mode-cons))
+    (setq file-local-variables-alist
+          (delq mode-cons file-local-variables-alist)))
       (when stile
-	(or (stringp stile) (error "c-file-style is not a string"))
-	(if (boundp 'dir-local-variables-alist)
-	    ;; Determine whether `c-file-style' was set in the file's local
-	    ;; variables or in a .dir-locals.el (a directory setting).
-	    (let ((cfs-in-file-and-dir-count
-		   (c-count-cfss file-local-variables-alist))
-		  (cfs-in-dir-count (c-count-cfss dir-local-variables-alist)))
-	      (c-set-style stile
-			   (and (= cfs-in-file-and-dir-count cfs-in-dir-count)
-				'keep-defaults)))
-	  (c-set-style stile)))
+    (or (stringp stile) (error "c-file-style is not a string"))
+    (if (boundp 'dir-local-variables-alist)
+        ;; Determine whether `c-file-style' was set in the file's local
+        ;; variables or in a .dir-locals.el (a directory setting).
+        (let ((cfs-in-file-and-dir-count
+           (c-count-cfss file-local-variables-alist))
+          (cfs-in-dir-count (c-count-cfss dir-local-variables-alist)))
+          (c-set-style stile
+               (and (= cfs-in-file-and-dir-count cfs-in-dir-count)
+                'keep-defaults)))
+      (c-set-style stile)))
       (when offsets
-	(mapc
-	 (lambda (langentry)
-	   (let ((langelem (car langentry))
-		 (offset (cdr langentry)))
-	     (c-set-offset langelem offset)))
-	 offsets)))))
+    (mapc
+     (lambda (langentry)
+       (let ((langelem (car langentry))
+         (offset (cdr langentry)))
+         (c-set-offset langelem offset)))
+     offsets)))))
 
 (defun c-remove-any-local-eval-or-mode-variables ()
   ;; If the buffer specifies `mode' or `eval' in its File Local Variable list
@@ -878,38 +878,38 @@ This function is called from the hook `before-hack-local-variables-hook'."
   (search-backward "\n\^L" (max (- (point-max) 3000) (point-min)) 'move)
   (let (lv-point (prefix "") (suffix ""))
     (when (let ((case-fold-search t))
-	    (search-forward "Local Variables:" nil t))
+        (search-forward "Local Variables:" nil t))
       (setq lv-point (point))
       ;; The prefix is what comes before "local variables:" in its line.
       ;; The suffix is what comes after "local variables:" in its line.
       (skip-chars-forward " \t")
       (or (eolp)
-	  (setq suffix (buffer-substring (point)
-					 (progn (end-of-line) (point)))))
+      (setq suffix (buffer-substring (point)
+                     (progn (end-of-line) (point)))))
       (goto-char (match-beginning 0))
       (or (bolp)
-	  (setq prefix
-		(buffer-substring (point)
-				  (progn (beginning-of-line) (point)))))
+      (setq prefix
+        (buffer-substring (point)
+                  (progn (beginning-of-line) (point)))))
 
       (while (search-forward-regexp
-	      (concat "^[ \t]*"
-		      (regexp-quote prefix)
-		      "\\(mode\\|eval\\):.*"
-		      (regexp-quote suffix)
-		      "$")
-	      nil t)
-	(forward-line 0)
-	(delete-region (point) (progn (forward-line) (point)))))
+          (concat "^[ \t]*"
+              (regexp-quote prefix)
+              "\\(mode\\|eval\\):.*"
+              (regexp-quote suffix)
+              "$")
+          nil t)
+    (forward-line 0)
+    (delete-region (point) (progn (forward-line) (point)))))
 
     ;; Delete the first line, if we've got one, in case it contains a mode spec.
     (unless (and lv-point
-		 (progn (goto-char lv-point)
-			(forward-line 0)
-			(bobp)))
+         (progn (goto-char lv-point)
+            (forward-line 0)
+            (bobp)))
       (goto-char (point-min))
       (unless (eobp)
-	(delete-region (point) (progn (forward-line) (point)))))))
+    (delete-region (point) (progn (forward-line) (point)))))))
 
 (defun c-postprocess-file-styles ()
   "Function that post processes relevant file local variables in CC Mode.
@@ -923,19 +923,19 @@ Note that the style variables are always made local to the buffer."
   ;; apply file styles and offsets
   (when c-buffer-is-cc-mode
     (if (or c-file-style c-file-offsets)
-	(c-make-styles-buffer-local t))
+    (c-make-styles-buffer-local t))
     (when c-file-style
       (or (stringp c-file-style)
-	  (error "c-file-style is not a string"))
+      (error "c-file-style is not a string"))
       (c-set-style c-file-style))
 
     (and c-file-offsets
-	 (mapc
-	  (lambda (langentry)
-	    (let ((langelem (car langentry))
-		  (offset (cdr langentry)))
-	      (c-set-offset langelem offset)))
-	  c-file-offsets))
+     (mapc
+      (lambda (langentry)
+        (let ((langelem (car langentry))
+          (offset (cdr langentry)))
+          (c-set-offset langelem offset)))
+      c-file-offsets))
     ;; Problem: The file local variable block might have explicitly set a
     ;; style variable.  The `c-set-style' or `mapcar' call might have
     ;; overwritten this.  So we run `hack-local-variables' again to remedy
@@ -950,11 +950,11 @@ Note that the style variables are always made local to the buffer."
     ;; We prevent this by temporarily removing `mode' from the Local Variables
     ;; section.
     (if (or c-file-style c-file-offsets)
-	(let ((hack-local-variables-hook nil) (inhibit-read-only t))
-	  (c-tentative-buffer-changes
-	    (c-remove-any-local-eval-or-mode-variables)
-	    (hack-local-variables))
-	  nil))))
+    (let ((hack-local-variables-hook nil) (inhibit-read-only t))
+      (c-tentative-buffer-changes
+        (c-remove-any-local-eval-or-mode-variables)
+        (hack-local-variables))
+      nil))))
 
 (if (boundp 'before-hack-local-variables-hook)
     (add-hook 'before-hack-local-variables-hook 'c-before-hack-hook)
@@ -979,7 +979,7 @@ Note that the style variables are always made local to the buffer."
   ;; `c-before/after-change', frame 3 is the primitive invoking the change
   ;; hook.
   (memq (cadr (backtrace-frame 3))
-	'(put-text-property remove-list-of-text-properties)))
+    '(put-text-property remove-list-of-text-properties)))
 
 (defun c-depropertize-CPP (beg end)
   ;; Remove the punctuation syntax-table text property from the CPP parts of
@@ -992,32 +992,32 @@ Note that the style variables are always made local to the buffer."
   (c-save-buffer-state (m-beg ss-found)
     (goto-char c-new-BEG)
     (while (and (< (point) beg)
-		(search-forward-regexp c-anchored-cpp-prefix beg 'bound))
+        (search-forward-regexp c-anchored-cpp-prefix beg 'bound))
       (goto-char (match-beginning 1))
       (setq m-beg (point))
       (c-end-of-macro)
       (when (c-major-mode-is 'c++-mode)
-	(save-excursion (c-depropertize-raw-strings-in-region m-beg (point))))
+    (save-excursion (c-depropertize-raw-strings-in-region m-beg (point))))
       (c-clear-char-property-with-value m-beg (point) 'syntax-table '(1)))
 
     (while (and (< (point) end)
-		(setq ss-found
-		      (search-forward-regexp c-anchored-cpp-prefix end 'bound)))
+        (setq ss-found
+              (search-forward-regexp c-anchored-cpp-prefix end 'bound)))
       (goto-char (match-beginning 1))
       (setq m-beg (point))
       (c-end-of-macro))
     (when (and ss-found (> (point) end))
       (when (c-major-mode-is 'c++-mode)
-	(save-excursion (c-depropertize-raw-strings-in-region m-beg (point))))
+    (save-excursion (c-depropertize-raw-strings-in-region m-beg (point))))
       (c-clear-char-property-with-value m-beg (point) 'syntax-table '(1)))
 
     (while (and (< (point) c-new-END)
-		(search-forward-regexp c-anchored-cpp-prefix c-new-END 'bound))
+        (search-forward-regexp c-anchored-cpp-prefix c-new-END 'bound))
       (goto-char (match-beginning 1))
       (setq m-beg (point))
       (c-end-of-macro)
       (when (c-major-mode-is 'c++-mode)
-	(save-excursion (c-depropertize-raw-strings-in-region m-beg (point))))
+    (save-excursion (c-depropertize-raw-strings-in-region m-beg (point))))
       (c-clear-char-property-with-value
        m-beg (point) 'syntax-table '(1)))))
 
@@ -1040,8 +1040,8 @@ Note that the style variables are always made local to the buffer."
   (goto-char c-new-END)
   (when (c-beginning-of-macro)
     (c-end-of-macro)
-    (or (eobp) (forward-char)))	 ; Over the terminating NL which may be marked
-				 ; with a c-cpp-delimiter category property
+    (or (eobp) (forward-char)))  ; Over the terminating NL which may be marked
+                 ; with a c-cpp-delimiter category property
   (when (> (point) c-new-END)
     (setq c-new-END (min (point) (c-determine-+ve-limit 500 c-new-END)))))
 
@@ -1082,7 +1082,7 @@ Note that the style variables are always made local to the buffer."
     ;; Determine the region, (c-new-BEG c-new-END), which will get font
     ;; locked.  This restricts the region should there be long macros.
     (setq c-new-END (min (max c-new-END (point))
-			 (c-determine-+ve-limit 500 c-new-END)))))
+             (c-determine-+ve-limit 500 c-new-END)))))
 
 (defun c-neutralize-CPP-line (beg end)
   ;; BEG and END bound a region, typically a preprocessor line.  Put a
@@ -1096,21 +1096,21 @@ Note that the style variables are always made local to the buffer."
   (save-excursion
     (let (s)
       (while
-	  (progn
-	    (setq s (parse-partial-sexp beg end -1))
-	    (cond
-	     ((< (nth 0 s) 0)		; found an unmated ),},]
-	      (c-put-char-property (1- (point)) 'syntax-table '(1))
-	      t)
-	     ;; Unbalanced strings are now handled by
-	     ;; `c-before-change-check-unbalanced-strings', etc.
-	     ;; ((nth 3 s)			; In a string
-	     ;;  (c-put-char-property (nth 8 s) 'syntax-table '(1))
-	     ;;  t)
-	     ((> (nth 0 s) 0)		; In a (,{,[
-	      (c-put-char-property (nth 1 s) 'syntax-table '(1))
-	      t)
-	     (t nil)))))))
+      (progn
+        (setq s (parse-partial-sexp beg end -1))
+        (cond
+         ((< (nth 0 s) 0)       ; found an unmated ),},]
+          (c-put-char-property (1- (point)) 'syntax-table '(1))
+          t)
+         ;; Unbalanced strings are now handled by
+         ;; `c-before-change-check-unbalanced-strings', etc.
+         ;; ((nth 3 s)          ; In a string
+         ;;  (c-put-char-property (nth 8 s) 'syntax-table '(1))
+         ;;  t)
+         ((> (nth 0 s) 0)       ; In a (,{,[
+          (c-put-char-property (nth 1 s) 'syntax-table '(1))
+          t)
+         (t nil)))))))
 
 (defun c-neutralize-syntax-in-CPP (_begg _endd _old-len)
   ;; "Neutralize" every preprocessor line wholly or partially in the changed
@@ -1140,31 +1140,31 @@ Note that the style variables are always made local to the buffer."
     ;; Add needed properties to each CPP construct in the region.
     (goto-char c-new-BEG)
     (if (setq limits (c-literal-limits)) ; Go past any literal.
-	(goto-char (cdr limits)))
+    (goto-char (cdr limits)))
     (skip-chars-backward " \t")
     (let ((pps-position (point))  pps-state mbeg)
       (while (and (< (point) c-new-END)
-		  (search-forward-regexp c-anchored-cpp-prefix c-new-END t))
-	;; If we've found a "#" inside a macro/string/comment, ignore it.
-	(unless
-	    (or (save-excursion
-		  (goto-char (match-beginning 0))
-		  (let ((here (point)))
-		    (and (save-match-data (c-beginning-of-macro))
-			 (< (point) here))))
-		(progn
-		  (setq pps-state
-			(parse-partial-sexp pps-position (point) nil nil pps-state)
-			pps-position (point))
-		  (or (nth 3 pps-state)	   ; in a string?
-		      (and (nth 4 pps-state)
-			   (not (eq (nth 7 pps-state) 'syntax-table)))))) ; in a comment?
-	  (goto-char (match-beginning 1))
-	  (setq mbeg (point))
-	  (if (> (c-no-comment-end-of-macro) mbeg)
-	      (c-neutralize-CPP-line mbeg (point)) ; "punctuation" properties
-	    (forward-line))	      ; no infinite loop with, e.g., "#//"
-	  )))))
+          (search-forward-regexp c-anchored-cpp-prefix c-new-END t))
+    ;; If we've found a "#" inside a macro/string/comment, ignore it.
+    (unless
+        (or (save-excursion
+          (goto-char (match-beginning 0))
+          (let ((here (point)))
+            (and (save-match-data (c-beginning-of-macro))
+             (< (point) here))))
+        (progn
+          (setq pps-state
+            (parse-partial-sexp pps-position (point) nil nil pps-state)
+            pps-position (point))
+          (or (nth 3 pps-state)    ; in a string?
+              (and (nth 4 pps-state)
+               (not (eq (nth 7 pps-state) 'syntax-table)))))) ; in a comment?
+      (goto-char (match-beginning 1))
+      (setq mbeg (point))
+      (if (> (c-no-comment-end-of-macro) mbeg)
+          (c-neutralize-CPP-line mbeg (point)) ; "punctuation" properties
+        (forward-line))       ; no infinite loop with, e.g., "#//"
+      )))))
 
 (defun c-unescaped-nls-in-string-p (&optional quote-pos)
   ;; Return whether unescaped newlines can be inside strings.
@@ -1176,7 +1176,7 @@ Note that the style variables are always made local to the buffer."
    ((null c-multiline-string-start-char) nil)
    ((c-characterp c-multiline-string-start-char)
     (and quote-pos
-	 (eq (char-before quote-pos) c-multiline-string-start-char)))
+     (eq (char-before quote-pos) c-multiline-string-start-char)))
    (t t)))
 
 (defun c-multiline-string-start-is-being-detached (end)
@@ -1194,20 +1194,20 @@ Note that the style variables are always made local to the buffer."
   ;; We remove string-fence syntax-table text properties from characters we
   ;; pass over.
   (let* ((start (point))
-	 (no-st-s `(0 nil nil ?\" nil nil 0 nil ,start nil nil))
-	 (st-s `(0 nil nil t nil nil 0 nil ,start nil nil))
-	 no-st-pos st-pos
-	 )
+     (no-st-s `(0 nil nil ?\" nil nil 0 nil ,start nil nil))
+     (st-s `(0 nil nil t nil nil 0 nil ,start nil nil))
+     no-st-pos st-pos
+     )
     (parse-partial-sexp start end nil nil no-st-s 'syntax-table)
     (setq no-st-pos (point))
     (goto-char start)
     (while (progn
-	     (parse-partial-sexp (point) end nil nil st-s 'syntax-table)
-	     (unless (bobp)
-	       (c-clear-syn-tab (1- (point))))
-	     (setq st-pos (point))
-	     (and (< (point) end)
-		  (not (eq (char-before) ?\")))))
+         (parse-partial-sexp (point) end nil nil st-s 'syntax-table)
+         (unless (bobp)
+           (c-clear-syn-tab (1- (point))))
+         (setq st-pos (point))
+         (and (< (point) end)
+          (not (eq (char-before) ?\")))))
     (goto-char (min no-st-pos st-pos))
     nil))
 
@@ -1220,39 +1220,39 @@ Note that the style variables are always made local to the buffer."
       (goto-char (point-max))
       (skip-chars-backward "^\"")
       (while
-	  (and
-	   (not (bobp))
-	   (cond
-	    ((progn
-	       (setq pos-ll (c-literal-limits)
-		     pos-lt (c-literal-type pos-ll))
-	       (memq pos-lt '(c c++)))
-	     ;; In a comment.
-	     (goto-char (car pos-ll)))
-	    ((save-excursion
-	       (backward-char)	; over "
-	       (c-is-escaped (point)))
-	     ;; At an escaped string.
-	     (backward-char)
-	     t)
-	    (t
-	     ;; At a significant "
-	     (c-clear-syn-tab (1- (point)))
-	     (setq pos-ll (c-literal-limits)
-		   pos-lt (c-literal-type pos-ll))
-	     nil)))
-	(skip-chars-backward "^\""))
+      (and
+       (not (bobp))
+       (cond
+        ((progn
+           (setq pos-ll (c-literal-limits)
+             pos-lt (c-literal-type pos-ll))
+           (memq pos-lt '(c c++)))
+         ;; In a comment.
+         (goto-char (car pos-ll)))
+        ((save-excursion
+           (backward-char)  ; over "
+           (c-is-escaped (point)))
+         ;; At an escaped string.
+         (backward-char)
+         t)
+        (t
+         ;; At a significant "
+         (c-clear-syn-tab (1- (point)))
+         (setq pos-ll (c-literal-limits)
+           pos-lt (c-literal-type pos-ll))
+         nil)))
+    (skip-chars-backward "^\""))
       (cond
        ((bobp))
        ((eq pos-lt 'string)
-	(c-put-syn-tab (1- (point)) '(15)))
+    (c-put-syn-tab (1- (point)) '(15)))
        (t nil)))))
 
 (defun c-put-syn-tab (pos value)
   ;; Set both the syntax-table and the c-fl-syn-tab text properties at POS to
   ;; VALUE (which should not be nil).
   ;; `(let ((-pos- ,pos)
-  ;; 	 (-value- ,value))
+  ;;     (-value- ,value))
   (c-put-char-property pos 'syntax-table value)
   (c-put-char-property pos 'c-fl-syn-tab value)
   (cond
@@ -1273,23 +1273,23 @@ Note that the style variables are always made local to the buffer."
      (c-clear-char-property pos 'c-fl-syn-tab)
      (when c-min-syn-tab-mkr
        (if (and (eq pos (marker-position c-min-syn-tab-mkr))
-		(eq (1+ pos) (marker-position c-max-syn-tab-mkr)))
-	   (progn
-	     (move-marker c-min-syn-tab-mkr nil)
-	     (move-marker c-max-syn-tab-mkr nil)
-	     (setq c-min-syn-tab-mkr nil  c-max-syn-tab-mkr nil))
-	 (when (eq pos (marker-position c-min-syn-tab-mkr))
-	   (move-marker c-min-syn-tab-mkr
-			(if (c-get-char-property (1+ pos) 'c-fl-syn-tab)
-			    (1+ pos)
-			  (c-next-single-property-change
-			   (1+ pos) 'c-fl-syn-tab nil c-max-syn-tab-mkr))))
-	 (when (eq (1+ pos) (marker-position c-max-syn-tab-mkr))
-	   (move-marker c-max-syn-tab-mkr
-			(if (c-get-char-property (1- pos) 'c-fl-syn-tab)
-			    pos
-			  (c-previous-single-property-change
-			   pos 'c-fl-syn-tab nil (1+ c-min-syn-tab-mkr)))))))
+        (eq (1+ pos) (marker-position c-max-syn-tab-mkr)))
+       (progn
+         (move-marker c-min-syn-tab-mkr nil)
+         (move-marker c-max-syn-tab-mkr nil)
+         (setq c-min-syn-tab-mkr nil  c-max-syn-tab-mkr nil))
+     (when (eq pos (marker-position c-min-syn-tab-mkr))
+       (move-marker c-min-syn-tab-mkr
+            (if (c-get-char-property (1+ pos) 'c-fl-syn-tab)
+                (1+ pos)
+              (c-next-single-property-change
+               (1+ pos) 'c-fl-syn-tab nil c-max-syn-tab-mkr))))
+     (when (eq (1+ pos) (marker-position c-max-syn-tab-mkr))
+       (move-marker c-max-syn-tab-mkr
+            (if (c-get-char-property (1- pos) 'c-fl-syn-tab)
+                pos
+              (c-previous-single-property-change
+               pos 'c-fl-syn-tab nil (1+ c-min-syn-tab-mkr)))))))
      (c-truncate-lit-pos-cache pos))
 
 (defun c-clear-string-fences ()
@@ -1301,51 +1301,51 @@ Note that the style variables are always made local to the buffer."
     (let (s pos)
       (setq pos c-min-syn-tab-mkr)
       (while
-	  (and
-	   (< pos c-max-syn-tab-mkr)
-	   (setq pos (c-min-property-position pos
-					      c-max-syn-tab-mkr
-					      'c-fl-syn-tab))
-	   (< pos c-max-syn-tab-mkr))
-	(c-clear-char-property pos 'syntax-table)
-	(setq pos (1+ pos)))
+      (and
+       (< pos c-max-syn-tab-mkr)
+       (setq pos (c-min-property-position pos
+                          c-max-syn-tab-mkr
+                          'c-fl-syn-tab))
+       (< pos c-max-syn-tab-mkr))
+    (c-clear-char-property pos 'syntax-table)
+    (setq pos (1+ pos)))
       ;; Check we haven't left any unbalanced "s.
       (save-excursion
-	(setq pos c-min-syn-tab-mkr)
-	;; Is there already an unbalanced " before BEG?
-	(setq pos (c-min-property-position pos c-max-syn-tab-mkr
-					   'c-fl-syn-tab))
-	(when (< pos c-max-syn-tab-mkr)
-	  (goto-char pos))
-	(when (and (save-match-data
-		     (c-search-backward-char-property-with-value-on-char
-		      'c-fl-syn-tab '(15) ?\"
-		      (max (- (point) 500) (point-min))))
-		   (not (equal (c-get-char-property (point) 'syntax-table) '(1))))
-	  (setq pos (1+ pos)))
-	(while (< pos c-max-syn-tab-mkr)
-	  (setq pos
-		(c-min-property-position pos c-max-syn-tab-mkr 'c-fl-syn-tab))
-	  (when (< pos c-max-syn-tab-mkr)
-	    (if (memq (char-after pos) c-string-delims)
-		(progn
-		  ;; Step over the ".
-		  (setq s (parse-partial-sexp pos c-max-syn-tab-mkr
-					      nil nil nil
-					      'syntax-table))
-		  ;; Seek a (bogus) matching ".
-		  (setq s (parse-partial-sexp (point) c-max-syn-tab-mkr
-					      nil nil s
-					      'syntax-table))
-		  ;; When a bogus matching " is found, do nothing.
-		  ;; Otherwise mark the " with 'syntax-table '(1).
-		  (unless
-		      (and		;(< (point) end)
-		       (not (nth 3 s))
-		       (c-get-char-property (1- (point)) 'c-fl-syn-tab))
-		    (c-put-char-property pos 'syntax-table '(1)))
-		  (setq pos (point)))
-	      (setq pos (1+ pos)))))))))
+    (setq pos c-min-syn-tab-mkr)
+    ;; Is there already an unbalanced " before BEG?
+    (setq pos (c-min-property-position pos c-max-syn-tab-mkr
+                       'c-fl-syn-tab))
+    (when (< pos c-max-syn-tab-mkr)
+      (goto-char pos))
+    (when (and (save-match-data
+             (c-search-backward-char-property-with-value-on-char
+              'c-fl-syn-tab '(15) ?\"
+              (max (- (point) 500) (point-min))))
+           (not (equal (c-get-char-property (point) 'syntax-table) '(1))))
+      (setq pos (1+ pos)))
+    (while (< pos c-max-syn-tab-mkr)
+      (setq pos
+        (c-min-property-position pos c-max-syn-tab-mkr 'c-fl-syn-tab))
+      (when (< pos c-max-syn-tab-mkr)
+        (if (memq (char-after pos) c-string-delims)
+        (progn
+          ;; Step over the ".
+          (setq s (parse-partial-sexp pos c-max-syn-tab-mkr
+                          nil nil nil
+                          'syntax-table))
+          ;; Seek a (bogus) matching ".
+          (setq s (parse-partial-sexp (point) c-max-syn-tab-mkr
+                          nil nil s
+                          'syntax-table))
+          ;; When a bogus matching " is found, do nothing.
+          ;; Otherwise mark the " with 'syntax-table '(1).
+          (unless
+              (and      ;(< (point) end)
+               (not (nth 3 s))
+               (c-get-char-property (1- (point)) 'c-fl-syn-tab))
+            (c-put-char-property pos 'syntax-table '(1)))
+          (setq pos (point)))
+          (setq pos (1+ pos)))))))))
 
 (defun c-restore-string-fences ()
   ;; Restore any syntax-table text properties which are "mirrored" by
@@ -1353,14 +1353,14 @@ Note that the style variables are always made local to the buffer."
   (when (and c-min-syn-tab-mkr c-max-syn-tab-mkr)
     (let ((pos c-min-syn-tab-mkr))
       (while
-	  (and
-	   (< pos c-max-syn-tab-mkr)
-	   (setq pos
-		 (c-min-property-position pos c-max-syn-tab-mkr 'c-fl-syn-tab))
-	   (< pos c-max-syn-tab-mkr))
-	(c-put-char-property pos 'syntax-table
-			     (c-get-char-property pos 'c-fl-syn-tab))
-	(setq pos (1+ pos))))))
+      (and
+       (< pos c-max-syn-tab-mkr)
+       (setq pos
+         (c-min-property-position pos c-max-syn-tab-mkr 'c-fl-syn-tab))
+       (< pos c-max-syn-tab-mkr))
+    (c-put-char-property pos 'syntax-table
+                 (c-get-char-property pos 'c-fl-syn-tab))
+    (setq pos (1+ pos))))))
 
 (defvar c-bc-changed-stringiness nil)
 ;; Non-nil when, in a before-change function, the deletion of a range of text
@@ -1375,23 +1375,23 @@ Note that the style variables are always made local to the buffer."
   ;; not be one if there is a missing newline at EOB).
   (save-excursion
     (if here
-	(goto-char here)
+    (goto-char here)
       (setq here (point)))
     (cond
      ((memq (char-after) c-string-delims)
       (save-excursion
-	(save-match-data
-	  (forward-char)
-	  (if (and (c-search-forward-char-property 'syntax-table '(15))
-		   (memq (char-before) '(?\n ?\r)))
-	      (c-clear-syn-tab (1- (point))))))
+    (save-match-data
+      (forward-char)
+      (if (and (c-search-forward-char-property 'syntax-table '(15))
+           (memq (char-before) '(?\n ?\r)))
+          (c-clear-syn-tab (1- (point))))))
       (c-clear-syn-tab (point)))
      ((memq (char-after) '(?\n ?\r))
       (save-excursion
-	(save-match-data
-	  (when (and (c-search-backward-char-property 'syntax-table '(15))
-		     (memq (char-after) c-string-delims))
-	    (c-clear-syn-tab (point)))))
+    (save-match-data
+      (when (and (c-search-backward-char-property 'syntax-table '(15))
+             (memq (char-after) c-string-delims))
+        (c-clear-syn-tab (point)))))
       (c-clear-syn-tab (point)))
      (t (c-benign-error "c-remove-string-fences: wrong position")))))
 
@@ -1409,19 +1409,19 @@ Note that the style variables are always made local to the buffer."
   ;; `c-get-state-before-change-functions'.
   (c-save-buffer-state
       ((end-limits
-	(progn
-	  (goto-char (if (c-multiline-string-start-is-being-detached end)
-			 (1+ end)
-		       end))
-	  (c-literal-limits)))
+    (progn
+      (goto-char (if (c-multiline-string-start-is-being-detached end)
+             (1+ end)
+               end))
+      (c-literal-limits)))
        (end-literal-type (and end-limits
-			      (c-literal-type end-limits)))
+                  (c-literal-type end-limits)))
        (beg-limits
-	(progn
-	  (goto-char beg)
-	  (c-literal-limits)))
+    (progn
+      (goto-char beg)
+      (c-literal-limits)))
        (beg-literal-type (and beg-limits
-			      (c-literal-type beg-limits))))
+                  (c-literal-type beg-limits))))
 
     ;; It is possible the buffer change will include inserting a string quote.
     ;; This could have the effect of flipping the meaning of any following
@@ -1435,102 +1435,102 @@ Note that the style variables are always made local to the buffer."
       (goto-char end)
       (c-pps-to-string-delim (point-max))
       (when (< (point) (point-max))
-	(while
-	    (and
-	     (progn
-	       (while
-		   (and
-		    (c-syntactic-re-search-forward
-		     (if c-single-quotes-quote-strings
-			 "[\"']\\|\\s|"
-		       "\"\\|\\s|")
-		     (point-max) t t)
-		    (progn
-		      (c-clear-syn-tab (1- (point)))
-		      (not (memq (char-before) c-string-delims)))))
-	       (memq (char-before) c-string-delims))
-	     (progn
-	       (c-pps-to-string-delim (point-max))
-	       (< (point) (point-max))))))
+    (while
+        (and
+         (progn
+           (while
+           (and
+            (c-syntactic-re-search-forward
+             (if c-single-quotes-quote-strings
+             "[\"']\\|\\s|"
+               "\"\\|\\s|")
+             (point-max) t t)
+            (progn
+              (c-clear-syn-tab (1- (point)))
+              (not (memq (char-before) c-string-delims)))))
+           (memq (char-before) c-string-delims))
+         (progn
+           (c-pps-to-string-delim (point-max))
+           (< (point) (point-max))))))
       (setq c-new-END (max (point) c-new-END)))
 
      (c-multiline-string-start-char
       (setq c-bc-changed-stringiness
-	    (not (eq (eq end-literal-type 'string)
-		     (eq beg-literal-type 'string))))
+        (not (eq (eq end-literal-type 'string)
+             (eq beg-literal-type 'string))))
       ;; Deal with deletion of backslashes before "s.
       (goto-char end)
       (if (and (looking-at (if c-single-quotes-quote-strings
-			       "\\\\*[\"']"
-			     "\\\\*\""))
-	       (c-is-escaped (point)))
-	  (setq c-bc-changed-stringiness (not c-bc-changed-stringiness)))
+                   "\\\\*[\"']"
+                 "\\\\*\""))
+           (c-is-escaped (point)))
+      (setq c-bc-changed-stringiness (not c-bc-changed-stringiness)))
       (if (eq beg-literal-type 'string)
-	  (setq c-new-BEG (min (car beg-limits) c-new-BEG))))
+      (setq c-new-BEG (min (car beg-limits) c-new-BEG))))
 
      ((< end (point-max))
       ;; Have we just escaped a newline by deleting characters?
       (if (and (eq end-literal-type 'string)
-	       (memq (char-after end) '(?\n ?\r)))
-	  (cond
-	   ;; Are we escaping a newline by deleting stuff between \ and \n?
-	   ((and (> end beg)
-		 (c-will-be-escaped end beg end))
-	    (c-remove-string-fences end)
-	    (goto-char (1+ end)))
-	   ;; Are we unescaping a newline ...
-	   ((and
-	     (c-is-escaped end)
-	     (or (eq beg end) ; .... by inserting stuff between \ and \n?
-		 (c-will-be-unescaped beg end))) ;  ... by removing an odd number of \s?
-	    (goto-char (1+ end))) ; To after the NL which is being unescaped.
-	   (t
-	    (goto-char end)))
-	(goto-char end))
+           (memq (char-after end) '(?\n ?\r)))
+      (cond
+       ;; Are we escaping a newline by deleting stuff between \ and \n?
+       ((and (> end beg)
+         (c-will-be-escaped end beg end))
+        (c-remove-string-fences end)
+        (goto-char (1+ end)))
+       ;; Are we unescaping a newline ...
+       ((and
+         (c-is-escaped end)
+         (or (eq beg end) ; .... by inserting stuff between \ and \n?
+             (c-will-be-unescaped beg))) ;  ... by removing an odd number of \s?
+        (goto-char (1+ end))) ; To after the NL which is being unescaped.
+       (t
+        (goto-char end)))
+    (goto-char end))
 
       ;; Move to end of logical line (as it will be after the change, or as it
       ;; was before unescaping a NL.)
       (re-search-forward "\\(?:\\\\\\(?:.\\|\n\\)\\|[^\\\n\r]\\)*" nil t)
       ;; We're at an EOLL or point-max.
       (if (equal (c-get-char-property (point) 'syntax-table) '(15))
-	  (if (memq (char-after) '(?\n ?\r))
-	      ;; Normally terminated invalid string.
-	      (c-remove-string-fences)
-	    ;; Opening " at EOB.
-	    (c-clear-syn-tab (1- (point))))
-	(when (and (c-search-backward-char-property 'syntax-table '(15) c-new-BEG)
-		   (memq (char-after) c-string-delims)) ; Ignore an unterminated raw string's (.
-	  ;; Opening " on last line of text (without EOL).
-	  (c-remove-string-fences)
-	  (setq c-new-BEG (min c-new-BEG (point))))))
+      (if (memq (char-after) '(?\n ?\r))
+          ;; Normally terminated invalid string.
+          (c-remove-string-fences)
+        ;; Opening " at EOB.
+        (c-clear-syn-tab (1- (point))))
+    (when (and (c-search-backward-char-property 'syntax-table '(15) c-new-BEG)
+           (memq (char-after) c-string-delims)) ; Ignore an unterminated raw string's (.
+      ;; Opening " on last line of text (without EOL).
+      (c-remove-string-fences)
+      (setq c-new-BEG (min c-new-BEG (point))))))
 
-     (t (goto-char end)			; point-max
-	(when
-	    (and
-	     (c-search-backward-char-property 'syntax-table '(15) c-new-BEG)
-	     (memq (char-after) c-string-delims))
-	  (c-remove-string-fences))))
+     (t (goto-char end)         ; point-max
+    (when
+        (and
+         (c-search-backward-char-property 'syntax-table '(15) c-new-BEG)
+         (memq (char-after) c-string-delims))
+      (c-remove-string-fences))))
 
     (unless
-	(or (and
-	     ;; Don't set c-new-BEG/END if we're in a raw string.
-	     (eq beg-literal-type 'string)
-	     (c-at-c++-raw-string-opener (car beg-limits)))
-	    (and c-multiline-string-start-char
-		 (not (c-characterp c-multiline-string-start-char))))
+    (or (and
+         ;; Don't set c-new-BEG/END if we're in a raw string.
+         (eq beg-literal-type 'string)
+         (c-at-c++-raw-string-opener (car beg-limits)))
+        (and c-multiline-string-start-char
+         (not (c-characterp c-multiline-string-start-char))))
       (when (and (eq end-literal-type 'string)
-		 (not (eq (char-before (cdr end-limits)) ?\())
-		 (memq (char-after (car end-limits)) c-string-delims))
-	(setq c-new-END (max c-new-END (cdr end-limits)))
-	(when (equal (c-get-char-property (car end-limits) 'syntax-table)
-		     '(15))
-	  (c-remove-string-fences (car end-limits)))
-	(setq c-new-END (max c-new-END (cdr end-limits))))
+         (not (eq (char-before (cdr end-limits)) ?\())
+         (memq (char-after (car end-limits)) c-string-delims))
+    (setq c-new-END (max c-new-END (cdr end-limits)))
+    (when (equal (c-get-char-property (car end-limits) 'syntax-table)
+             '(15))
+      (c-remove-string-fences (car end-limits)))
+    (setq c-new-END (max c-new-END (cdr end-limits))))
 
       (when (and (eq beg-literal-type 'string)
-		 (memq (char-after (car beg-limits)) c-string-delims))
-	(c-remove-string-fences (car beg-limits))
-	(setq c-new-BEG (min c-new-BEG (car beg-limits)))))))
+         (memq (char-after (car beg-limits)) c-string-delims))
+    (c-remove-string-fences (car beg-limits))
+    (setq c-new-BEG (min c-new-BEG (car beg-limits)))))))
 
 (defun c-after-change-mark-abnormal-strings (beg end _old-len)
   ;; Mark any unbalanced strings in the region (c-new-BEG c-new-END) with
@@ -1542,114 +1542,114 @@ Note that the style variables are always made local to the buffer."
   ;; This function is called exclusively as an after-change function via
   ;; `c-before-font-lock-functions'.
   (if (and c-multiline-string-start-char
-	   (not (c-characterp c-multiline-string-start-char)))
+       (not (c-characterp c-multiline-string-start-char)))
       ;; Only the last " might need to be marked.
       (c-save-buffer-state
-	  ((beg-literal-limits
-	    (progn (goto-char beg) (c-literal-limits)))
-	   (beg-literal-type (c-literal-type beg-literal-limits))
-	   end-literal-limits end-literal-type)
-	(when (and (eq beg-literal-type 'string)
-		   (c-get-char-property (car beg-literal-limits) 'syntax-table))
-	  (c-clear-syn-tab (car beg-literal-limits))
-	  (setq c-bc-changed-stringiness (not c-bc-changed-stringiness)))
-	(setq end-literal-limits (progn (goto-char end) (c-literal-limits))
-	      end-literal-type (c-literal-type end-literal-limits))
-	;; Deal with the insertion of backslashes before a ".
-	(goto-char end)
-	(if (and (looking-at "\\\\*\"")
-		 (eq (logand (skip-chars-backward "\\\\" beg) 1) 1))
-	    (setq c-bc-changed-stringiness (not c-bc-changed-stringiness)))
-	(when (eq (eq (eq beg-literal-type 'string)
-		      (eq end-literal-type 'string))
-		  c-bc-changed-stringiness)
-	  (c-multiline-string-check-final-quote)))
+      ((beg-literal-limits
+        (progn (goto-char beg) (c-literal-limits)))
+       (beg-literal-type (c-literal-type beg-literal-limits))
+       end-literal-limits end-literal-type)
+    (when (and (eq beg-literal-type 'string)
+           (c-get-char-property (car beg-literal-limits) 'syntax-table))
+      (c-clear-syn-tab (car beg-literal-limits))
+      (setq c-bc-changed-stringiness (not c-bc-changed-stringiness)))
+    (setq end-literal-limits (progn (goto-char end) (c-literal-limits))
+          end-literal-type (c-literal-type end-literal-limits))
+    ;; Deal with the insertion of backslashes before a ".
+    (goto-char end)
+    (if (and (looking-at "\\\\*\"")
+         (eq (logand (skip-chars-backward "\\\\" beg) 1) 1))
+        (setq c-bc-changed-stringiness (not c-bc-changed-stringiness)))
+    (when (eq (eq (eq beg-literal-type 'string)
+              (eq end-literal-type 'string))
+          c-bc-changed-stringiness)
+      (c-multiline-string-check-final-quote)))
     ;; There could be several "s needing marking.
     (c-save-buffer-state
-	((cll (progn (goto-char c-new-BEG)
-		     (c-literal-limits)))
-	 (beg-literal-type (and cll (c-literal-type cll)))
-	 (beg-limits
-	  (cond
-	   ((and (eq beg-literal-type 'string)
-		 (c-unescaped-nls-in-string-p (car cll)))
-	    (cons
-	     (car cll)
-	     (progn
-	       (goto-char (1+ (car cll)))
-	       (search-forward-regexp
-		(cdr (assq (char-after (car cll)) c-string-innards-re-alist))
-		nil t)
-	       (min (1+ (point)) (point-max)))))
-	   ((and (null beg-literal-type)
-		 (goto-char beg)
-		 (and (not (bobp))
-		      (eq (char-before) c-multiline-string-start-char))
-		 (memq (char-after) c-string-delims))
-	    (cons (point)
-		  (progn
-		    (forward-char)
-		    (search-forward-regexp
-		     (cdr (assq (char-before) c-string-innards-re-alist)) nil t)
-		    (1+ (point)))))
-	   (cll)))
-	 (end-hwm ; the highest position which could possibly be affected by
-		   ; insertion/deletion of string delimiters.
-	  (max
-	   (progn
-	     (goto-char
-	      (if (and (memq (char-after end) '(?\n ?\r))
-		       (c-is-escaped end))
-		  (min (1+ end)	; 1+, if we're inside an escaped NL.
-		       (point-max))
-		end))
-	     (re-search-forward "\\(?:\\\\\\(?:.\\|\n\\)\\|[^\\\n\r]\\)*"
-				nil t)
-	     (point))
-	   c-new-END))
-	 s)
+    ((cll (progn (goto-char c-new-BEG)
+             (c-literal-limits)))
+     (beg-literal-type (and cll (c-literal-type cll)))
+     (beg-limits
+      (cond
+       ((and (eq beg-literal-type 'string)
+         (c-unescaped-nls-in-string-p (car cll)))
+        (cons
+         (car cll)
+         (progn
+           (goto-char (1+ (car cll)))
+           (search-forward-regexp
+        (cdr (assq (char-after (car cll)) c-string-innards-re-alist))
+        nil t)
+           (min (1+ (point)) (point-max)))))
+       ((and (null beg-literal-type)
+         (goto-char beg)
+         (and (not (bobp))
+              (eq (char-before) c-multiline-string-start-char))
+         (memq (char-after) c-string-delims))
+        (cons (point)
+          (progn
+            (forward-char)
+            (search-forward-regexp
+             (cdr (assq (char-before) c-string-innards-re-alist)) nil t)
+            (1+ (point)))))
+       (cll)))
+     (end-hwm ; the highest position which could possibly be affected by
+           ; insertion/deletion of string delimiters.
+      (max
+       (progn
+         (goto-char
+          (if (and (memq (char-after end) '(?\n ?\r))
+               (c-is-escaped end))
+          (min (1+ end) ; 1+, if we're inside an escaped NL.
+               (point-max))
+        end))
+         (re-search-forward "\\(?:\\\\\\(?:.\\|\n\\)\\|[^\\\n\r]\\)*"
+                nil t)
+         (point))
+       c-new-END))
+     s)
       (goto-char
        (cond ((null beg-literal-type)
-	      c-new-BEG)
-	     ((eq beg-literal-type 'string)
-	      (car beg-limits))
-	     (t				; comment
-	      (cdr beg-limits))))
+          c-new-BEG)
+         ((eq beg-literal-type 'string)
+          (car beg-limits))
+         (t             ; comment
+          (cdr beg-limits))))
       ;; Handle one string each time around the next while loop.
       (while
-	  (and
-	   (< (point) end-hwm)
-	   (progn
-	     ;; Skip over any comments before the next string.
-	     (while (progn
-		      (setq s (parse-partial-sexp (point) end-hwm nil
-						  nil s 'syntax-table))
-		      (and (< (point) end-hwm)
-			   (or (not (nth 3 s))
-			       (not (memq (char-before) c-string-delims))))))
-	     ;; We're at the start of a string.
-	     (and (memq (char-before) c-string-delims)
-		  (not (nth 4 s)))))	; Check we're actually out of the
-					; comment. not stuck at EOB
-	(unless (and (c-major-mode-is 'c++-mode)
-		     (c-maybe-re-mark-raw-string))
-	  (if (c-unescaped-nls-in-string-p (1- (point)))
-	      (looking-at "\\(\\\\\\(.\\|\n\\)\\|[^\"]\\)*")
-	    (looking-at (cdr (assq (char-before) c-string-innards-re-alist))))
-	  (cond
-	   ((memq (char-after (match-end 0)) '(?\n ?\r))
-	    (c-put-syn-tab (1- (point)) '(15))
-	    (c-put-syn-tab (match-end 0) '(15))
-	    (setq c-new-BEG (min c-new-BEG (point))
-		  c-new-END (max c-new-END (match-end 0))))
-	   ((or (eq (match-end 0) (point-max))
-		(eq (char-after (match-end 0)) ?\\)) ; \ at EOB
-	    (c-put-syn-tab (1- (point)) '(15))
-	    (setq c-new-BEG (min c-new-BEG (point))
-		  c-new-END (max c-new-END (match-end 0))) ; Do we need c-new-END?
-	    ))
-	  (goto-char (min (1+ (match-end 0)) (point-max))))
-	(setq s nil)))))
+      (and
+       (< (point) end-hwm)
+       (progn
+         ;; Skip over any comments before the next string.
+         (while (progn
+              (setq s (parse-partial-sexp (point) end-hwm nil
+                          nil s 'syntax-table))
+              (and (< (point) end-hwm)
+               (or (not (nth 3 s))
+                   (not (memq (char-before) c-string-delims))))))
+         ;; We're at the start of a string.
+         (and (memq (char-before) c-string-delims)
+          (not (nth 4 s)))))    ; Check we're actually out of the
+                    ; comment. not stuck at EOB
+    (unless (and (c-major-mode-is 'c++-mode)
+             (c-maybe-re-mark-raw-string))
+      (if (c-unescaped-nls-in-string-p (1- (point)))
+          (looking-at "\\(\\\\\\(.\\|\n\\)\\|[^\"]\\)*")
+        (looking-at (cdr (assq (char-before) c-string-innards-re-alist))))
+      (cond
+       ((memq (char-after (match-end 0)) '(?\n ?\r))
+        (c-put-syn-tab (1- (point)) '(15))
+        (c-put-syn-tab (match-end 0) '(15))
+        (setq c-new-BEG (min c-new-BEG (point))
+          c-new-END (max c-new-END (match-end 0))))
+       ((or (eq (match-end 0) (point-max))
+        (eq (char-after (match-end 0)) ?\\)) ; \ at EOB
+        (c-put-syn-tab (1- (point)) '(15))
+        (setq c-new-BEG (min c-new-BEG (point))
+          c-new-END (max c-new-END (match-end 0))) ; Do we need c-new-END?
+        ))
+      (goto-char (min (1+ (match-end 0)) (point-max))))
+    (setq s nil)))))
 
 (defun c-after-change-escape-NL-in-string (beg end _old_len)
   ;; If a backslash has just been inserted into a string, and this quotes an
@@ -1662,35 +1662,35 @@ Note that the style variables are always made local to the buffer."
   ;; This function is called exclusively as an after-change function via
   ;; `c-before-font-lock-functions'.  In C++ Mode, it should come before
   ;; `c-after-change-unmark-raw-strings' in that lang variable.
-  (let (lit-start		       ; Don't calculate this till we have to.
-	lim)
+  (let (lit-start              ; Don't calculate this till we have to.
+    lim)
     (when
-	(and (> end beg)
-	     (memq (char-after end) '(?\n ?\r))
-	     (c-is-escaped end)
-	     (progn (goto-char end)
-		    (setq lit-start (c-literal-start)))
-	     (memq (char-after lit-start) c-string-delims)
-	     (or (not (c-major-mode-is 'c++-mode))
-		 (progn
-		   (goto-char lit-start)
-		   (and (not (and (eq (char-before) ?R)
-				  (looking-at c-c++-raw-string-opener-1-re)))
-			(not (and (eq (char-after) ?\()
-				  (equal (c-get-char-property
-					  (point) 'syntax-table)
-					 '(15))))))
-		 (save-excursion
-		   (c-beginning-of-macro))))
-      (goto-char (1+ end))		; After the \
+    (and (> end beg)
+         (memq (char-after end) '(?\n ?\r))
+         (c-is-escaped end)
+         (progn (goto-char end)
+            (setq lit-start (c-literal-start)))
+         (memq (char-after lit-start) c-string-delims)
+         (or (not (c-major-mode-is 'c++-mode))
+         (progn
+           (goto-char lit-start)
+           (and (not (and (eq (char-before) ?R)
+                  (looking-at c-c++-raw-string-opener-1-re)))
+            (not (and (eq (char-after) ?\()
+                  (equal (c-get-char-property
+                      (point) 'syntax-table)
+                     '(15))))))
+         (save-excursion
+           (c-beginning-of-macro))))
+      (goto-char (1+ end))      ; After the \
       ;; Search forward for EOLL
       (setq lim (re-search-forward "\\(?:\\\\\\(?:.\\|\n\\)\\|[^\\\n\r]\\)*"
-				   nil t))
+                   nil t))
       (goto-char (1+ end))
       (when (c-search-forward-char-property-with-value-on-char
-	     'syntax-table '(15) ?\" lim)
-	(c-remove-string-fences end)
-	(c-remove-string-fences (1- (point)))))))
+         'syntax-table '(15) ?\" lim)
+    (c-remove-string-fences end)
+    (c-remove-string-fences (1- (point)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Parsing of quotes.
@@ -1727,17 +1727,17 @@ Note that the style variables are always made local to the buffer."
   (when c-has-quoted-numbers
     (save-excursion
       (let ((here (point))
-	    found)
-	(skip-chars-backward "[:xdigit:]'")
-	(if (and (memq (char-before) '(?x ?X))
-		 (eq (char-before (1- (point))) ?0))
-	    (backward-char 2))
-	(while
-	    (and
-	     (setq found
-		   (search-forward-regexp c-maybe-quoted-number-head here t))
-	     (< found here)))
-	(and (eq found here) (match-beginning 0))))))
+        found)
+    (skip-chars-backward "[:xdigit:]'")
+    (if (and (memq (char-before) '(?x ?X))
+         (eq (char-before (1- (point))) ?0))
+        (backward-char 2))
+    (while
+        (and
+         (setq found
+           (search-forward-regexp c-maybe-quoted-number-head here t))
+         (< found here)))
+    (and (eq found here) (match-beginning 0))))))
 
 (defconst c-maybe-quoted-number-tail
   (concat
@@ -1757,7 +1757,7 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
   ;; position of the end of the tail.  That position is also in (match-end 0).
   (when c-has-quoted-numbers
     (and (looking-at c-maybe-quoted-number-tail)
-	 (match-end 0))))
+     (match-end 0))))
 
 (defconst c-maybe-quoted-number
   (concat
@@ -1780,19 +1780,19 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
   (when c-has-quoted-numbers
     (save-excursion
       (let ((here (point))
-	    (bound (progn (skip-chars-forward "[:xdigit:]'") (point))))
-	(goto-char here)
-	(when (< (skip-chars-backward "[:xdigit:]'") 0)
-	  (if (and (memq (char-before) '(?x ?X))
-		   (eq (char-before (1- (point))) ?0))
-	      (backward-char 2))
-	  (while (and (search-forward-regexp c-maybe-quoted-number bound t)
-		      (<= (match-end 0) here)))
-	  (and (< (match-beginning 0) here)
-	       (> (match-end 0) here)
-	       (save-match-data
-		 (goto-char (match-beginning 0))
-		 (save-excursion (search-forward "'" (match-end 0) t)))))))))
+        (bound (progn (skip-chars-forward "[:xdigit:]'") (point))))
+    (goto-char here)
+    (when (< (skip-chars-backward "[:xdigit:]'") 0)
+      (if (and (memq (char-before) '(?x ?X))
+           (eq (char-before (1- (point))) ?0))
+          (backward-char 2))
+      (while (and (search-forward-regexp c-maybe-quoted-number bound t)
+              (<= (match-end 0) here)))
+      (and (< (match-beginning 0) here)
+           (> (match-end 0) here)
+           (save-match-data
+         (goto-char (match-beginning 0))
+         (save-excursion (search-forward "'" (match-end 0) t)))))))))
 
 (defun c-parse-quotes-before-change (_beg _end)
   ;; This function analyzes 's near the region (c-new-BEG c-new-END), amending
@@ -1813,26 +1813,26 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
     (while (eq (char-before (1- (point))) ?\\)
       (beginning-of-line 0))
     (while (and (< (point) c-new-BEG)
-		(search-forward "'" c-new-BEG t))
+        (search-forward "'" c-new-BEG t))
       (cond
        ((c-quoted-number-straddling-point)
-	(goto-char (match-end 0))
-	(if (> (match-end 0) c-new-BEG)
-	    (setq c-new-BEG (match-beginning 0))))
+    (goto-char (match-end 0))
+    (if (> (match-end 0) c-new-BEG)
+        (setq c-new-BEG (match-beginning 0))))
        ((c-quoted-number-head-before-point)
-	(if (>= (point) c-new-BEG)
-	    (setq c-new-BEG (match-beginning 0))))
+    (if (>= (point) c-new-BEG)
+        (setq c-new-BEG (match-beginning 0))))
        ((looking-at
-	 "\\([^'\\]\\|\\\\\\([0-7]\\{1,3\\}\\|[xuU][[:xdigit:]]+\\|.\\)\\)'")
-	(goto-char (match-end 0))
-	(if (> (match-end 0) c-new-BEG)
-	    (setq c-new-BEG (1- (match-beginning 0)))))
+     "\\([^'\\]\\|\\\\\\([0-7]\\{1,3\\}\\|[xuU][[:xdigit:]]+\\|.\\)\\)'")
+    (goto-char (match-end 0))
+    (if (> (match-end 0) c-new-BEG)
+        (setq c-new-BEG (1- (match-beginning 0)))))
        ((looking-at "\\\\'")
-	(setq c-new-BEG (min c-new-BEG (1- (point))))
-	(goto-char (match-end 0)))
+    (setq c-new-BEG (min c-new-BEG (1- (point))))
+    (goto-char (match-end 0)))
        ((save-excursion
-	  (not (search-forward "'" c-new-BEG t)))
-	(setq c-new-BEG (min c-new-BEG (1- (point)))))
+      (not (search-forward "'" c-new-BEG t)))
+    (setq c-new-BEG (min c-new-BEG (1- (point)))))
        (t nil)))
 
     (goto-char c-new-END)
@@ -1841,28 +1841,28 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
     (while (eq (char-before (1- (point))) ?\\)
       (beginning-of-line 0))
     (while (and (< (point) c-new-END)
-		(search-forward "'" c-new-END t))
+        (search-forward "'" c-new-END t))
       (cond
        ((c-quoted-number-straddling-point)
-	(goto-char (match-end 0))
-	(if (> (match-end 0) c-new-END)
-	    (setq c-new-END (match-end 0))))
+    (goto-char (match-end 0))
+    (if (> (match-end 0) c-new-END)
+        (setq c-new-END (match-end 0))))
        ((c-quoted-number-tail-after-point)
-	(goto-char (match-end 0))
-	(if (> (match-end 0) c-new-END)
-	    (setq c-new-END (match-end 0))))
+    (goto-char (match-end 0))
+    (if (> (match-end 0) c-new-END)
+        (setq c-new-END (match-end 0))))
        ((looking-at
-	 "\\([^'\\]\\|\\\\\\([0-7]\\{1,3\\}\\|[xuU][[:xdigit:]]+\\|.\\)\\)'")
-	(goto-char (match-end 0))
-	(if (> (match-end 0) c-new-END)
-	    (setq c-new-END (match-end 0))))
+     "\\([^'\\]\\|\\\\\\([0-7]\\{1,3\\}\\|[xuU][[:xdigit:]]+\\|.\\)\\)'")
+    (goto-char (match-end 0))
+    (if (> (match-end 0) c-new-END)
+        (setq c-new-END (match-end 0))))
        ((looking-at "\\\\'")
-	(goto-char (match-end 0))
-	(setq c-new-END (max c-new-END (point))))
+    (goto-char (match-end 0))
+    (setq c-new-END (max c-new-END (point))))
        ((equal (c-get-char-property (1- (point)) 'syntax-table) '(1))
-	(when (c-search-forward-char-property-with-value-on-char
-	       'syntax-table '(1) ?\' (c-point 'eoll))
-	  (setq c-new-END (max (point) c-new-END))))
+    (when (c-search-forward-char-property-with-value-on-char
+           'syntax-table '(1) ?\' (c-point 'eoll))
+      (setq c-new-END (max (point) c-new-END))))
        (t nil)))
     ;; Having reached c-new-END, handle any 's after it whose context may be
     ;; changed by the current buffer change.  The idea is to catch
@@ -1880,7 +1880,7 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
     ;; c-new-END).
     (goto-char c-new-BEG)
     (when (c-search-forward-char-property-with-value-on-char
-	   'syntax-table '(1) ?\' c-new-END)
+       'syntax-table '(1) ?\' c-new-END)
       (c-invalidate-state-cache (1- (point)))
       (c-truncate-lit-pos-cache (1- (point)))
       (c-clear-char-property-with-value-on-char
@@ -1889,10 +1889,10 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
        ?')
       ;; Remove the c-digit-separator text property from the same "'"s.
       (when c-has-quoted-numbers
-	(c-clear-char-property-with-value-on-char
-	 (1- (point)) c-new-END
-	 'c-digit-separator t
-	 ?')))))
+    (c-clear-char-property-with-value-on-char
+     (1- (point)) c-new-END
+     'c-digit-separator t
+     ?')))))
 
 (defun c-parse-quotes-after-change (_beg _end _old-len)
   ;; This function applies syntax-table properties (value '(1)) and
@@ -1908,35 +1908,35 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
     (save-restriction
       (goto-char c-new-BEG)
       (while (and (< (point) c-new-END)
-		  (search-forward "'" c-new-END 'limit))
-	(cond ((c-is-escaped (1- (point)))) ; not a real '.
-	      ((c-quoted-number-straddling-point)
-	       (setq num-beg (match-beginning 0)
-		     num-end (match-end 0))
-	       (c-invalidate-state-cache num-beg)
-	       (c-truncate-lit-pos-cache num-beg)
-	       (c-put-char-properties-on-char num-beg num-end
-					      'syntax-table '(1) ?')
-	       (c-put-char-properties-on-char num-beg num-end
-					      'c-digit-separator t ?')
-	       (goto-char num-end))
-	      ((looking-at
-		"\\([^\\']\\|\\\\\\([0-7]\\{1,3\\}\\|[xuU][[:xdigit:]]+\\|.\\)\
+          (search-forward "'" c-new-END 'limit))
+    (cond ((c-is-escaped (1- (point)))) ; not a real '.
+          ((c-quoted-number-straddling-point)
+           (setq num-beg (match-beginning 0)
+             num-end (match-end 0))
+           (c-invalidate-state-cache num-beg)
+           (c-truncate-lit-pos-cache num-beg)
+           (c-put-char-properties-on-char num-beg num-end
+                          'syntax-table '(1) ?')
+           (c-put-char-properties-on-char num-beg num-end
+                          'c-digit-separator t ?')
+           (goto-char num-end))
+          ((looking-at
+        "\\([^\\']\\|\\\\\\([0-7]\\{1,3\\}\\|[xuU][[:xdigit:]]+\\|.\\)\
 \\)'") ; balanced quoted expression.
-	       (goto-char (match-end 0)))
-	      ((looking-at "\\\\'")	; Anomalous construct.
-	       (c-invalidate-state-cache (1- (point)))
-	       (c-truncate-lit-pos-cache (1- (point)))
-	       (c-put-char-properties-on-char (1- (point)) (+ (point) 2)
-					      'syntax-table '(1) ?')
-	       (goto-char (match-end 0)))
-	      (t
-	       (c-invalidate-state-cache (1- (point)))
-	       (c-truncate-lit-pos-cache (1- (point)))
-	       (c-put-char-property (1- (point)) 'syntax-table '(1))))
-	;; Prevent the next `c-quoted-number-straddling-point' getting
-	;; confused by already processed single quotes.
-	(narrow-to-region (point) (point-max))))))
+           (goto-char (match-end 0)))
+          ((looking-at "\\\\'") ; Anomalous construct.
+           (c-invalidate-state-cache (1- (point)))
+           (c-truncate-lit-pos-cache (1- (point)))
+           (c-put-char-properties-on-char (1- (point)) (+ (point) 2)
+                          'syntax-table '(1) ?')
+           (goto-char (match-end 0)))
+          (t
+           (c-invalidate-state-cache (1- (point)))
+           (c-truncate-lit-pos-cache (1- (point)))
+           (c-put-char-property (1- (point)) 'syntax-table '(1))))
+    ;; Prevent the next `c-quoted-number-straddling-point' getting
+    ;; confused by already processed single quotes.
+    (narrow-to-region (point) (point-max))))))
 
 (defun c-before-change (beg end)
   ;; Function to be put on `before-change-functions'.  Primarily, this calls
@@ -1958,97 +1958,97 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
     (save-restriction
       (widen)
       (if c-just-done-before-change
-	  ;; We have two consecutive calls to `before-change-functions' without
-	  ;; an intervening `after-change-functions'.  An example of this is bug
-	  ;; #38691.  To protect CC Mode, assume that the entire buffer has
-	  ;; changed.
-	  (setq beg (point-min)
-		end (point-max)
-		c-just-done-before-change 'whole-buffer)
-	(setq c-just-done-before-change t))
+      ;; We have two consecutive calls to `before-change-functions' without
+      ;; an intervening `after-change-functions'.  An example of this is bug
+      ;; #38691.  To protect CC Mode, assume that the entire buffer has
+      ;; changed.
+      (setq beg (point-min)
+        end (point-max)
+        c-just-done-before-change 'whole-buffer)
+    (setq c-just-done-before-change t))
       ;; (c-new-BEG c-new-END) will be the region to fontify.
       (setq c-new-BEG beg  c-new-END end)
       (setq c-maybe-stale-found-type nil)
       ;; A workaround for syntax-ppss's failure to notice syntax-table text
       ;; property changes.
       (when (fboundp 'syntax-ppss)
-	(setq c-syntax-table-hwm most-positive-fixnum))
+    (setq c-syntax-table-hwm most-positive-fixnum))
       (save-match-data
-	(widen)
-	(unwind-protect
-	    (progn
-	      (c-restore-string-fences)
-	      (save-excursion
-		;; Are we inserting/deleting stuff in the middle of an
-		;; identifier?
-		(c-unfind-enclosing-token beg)
-		(c-unfind-enclosing-token end)
-		;; Are we coalescing two tokens together, e.g. "fo o"
-		;; -> "foo"?
-		(when (< beg end)
-		  (c-unfind-coalesced-tokens beg end))
-		(c-invalidate-sws-region-before beg end)
-		;; Are we (potentially) disrupting the syntactic
-		;; context which makes a type a type?  E.g. by
-		;; inserting stuff after "foo" in "foo bar;", or
-		;; before "foo" in "typedef foo *bar;"?
-		;;
-		;; We search for appropriate c-type properties "near"
-		;; the change.  First, find an appropriate boundary
-		;; for this property search.
-		(let (lim
-		      type type-pos
-		      marked-id term-pos
-		      (end1
-		       (or (and (eq (get-text-property end 'face)
-				    'font-lock-comment-face)
-				(previous-single-property-change end 'face))
-			   end)))
-		  (when (>= end1 beg) ; Don't hassle about changes entirely in
-					; comments.
-		    ;; Find a limit for the search for a `c-type' property
-		    (while
-			(and (/= (skip-chars-backward "^;{}") 0)
-			     (> (point) (point-min))
-			     (memq (c-get-char-property (1- (point)) 'face)
-				   '(font-lock-comment-face font-lock-string-face))))
-		    (setq lim (max (point-min) (1- (point))))
+    (widen)
+    (unwind-protect
+        (progn
+          (c-restore-string-fences)
+          (save-excursion
+        ;; Are we inserting/deleting stuff in the middle of an
+        ;; identifier?
+        (c-unfind-enclosing-token beg)
+        (c-unfind-enclosing-token end)
+        ;; Are we coalescing two tokens together, e.g. "fo o"
+        ;; -> "foo"?
+        (when (< beg end)
+          (c-unfind-coalesced-tokens beg end))
+        (c-invalidate-sws-region-before beg end)
+        ;; Are we (potentially) disrupting the syntactic
+        ;; context which makes a type a type?  E.g. by
+        ;; inserting stuff after "foo" in "foo bar;", or
+        ;; before "foo" in "typedef foo *bar;"?
+        ;;
+        ;; We search for appropriate c-type properties "near"
+        ;; the change.  First, find an appropriate boundary
+        ;; for this property search.
+        (let (lim
+              type type-pos
+              marked-id term-pos
+              (end1
+               (or (and (eq (get-text-property end 'face)
+                    'font-lock-comment-face)
+                (previous-single-property-change end 'face))
+               end)))
+          (when (>= end1 beg) ; Don't hassle about changes entirely in
+                    ; comments.
+            ;; Find a limit for the search for a `c-type' property
+            (while
+            (and (/= (skip-chars-backward "^;{}") 0)
+                 (> (point) (point-min))
+                 (memq (c-get-char-property (1- (point)) 'face)
+                   '(font-lock-comment-face font-lock-string-face))))
+            (setq lim (max (point-min) (1- (point))))
 
-		    ;; Look for the latest `c-type' property before end1
-		    (when (and (> end1 (point-min))
-			       (setq type-pos
-				     (if (get-text-property (1- end1) 'c-type)
-					 end1
-				       (previous-single-property-change end1 'c-type
-									nil lim))))
-		      (setq type (get-text-property (max (1- type-pos) lim) 'c-type))
+            ;; Look for the latest `c-type' property before end1
+            (when (and (> end1 (point-min))
+                   (setq type-pos
+                     (if (get-text-property (1- end1) 'c-type)
+                     end1
+                       (previous-single-property-change end1 'c-type
+                                    nil lim))))
+              (setq type (get-text-property (max (1- type-pos) lim) 'c-type))
 
-		      (when (memq type '(c-decl-id-start c-decl-type-start))
-			;; Get the identifier, if any, that the property is on.
-			(goto-char (1- type-pos))
-			(setq marked-id
-			      (when (looking-at "\\(\\sw\\|\\s_\\)")
-				(c-beginning-of-current-token)
-				(buffer-substring-no-properties (point) type-pos)))
+              (when (memq type '(c-decl-id-start c-decl-type-start))
+            ;; Get the identifier, if any, that the property is on.
+            (goto-char (1- type-pos))
+            (setq marked-id
+                  (when (looking-at "\\(\\sw\\|\\s_\\)")
+                (c-beginning-of-current-token)
+                (buffer-substring-no-properties (point) type-pos)))
 
-			(goto-char end1)
-			(skip-chars-forward "^;{}") ; FIXME!!!  loop for
-					; comment, maybe
-			(setq lim (point))
-			(setq term-pos
-			      (or (c-next-single-property-change end 'c-type nil lim) lim))
-			(setq c-maybe-stale-found-type
-			      (list type marked-id
-				    type-pos term-pos
-				    (buffer-substring-no-properties type-pos
-								    term-pos)
-				    (buffer-substring-no-properties beg end)))))))
+            (goto-char end1)
+            (skip-chars-forward "^;{}") ; FIXME!!!  loop for
+                    ; comment, maybe
+            (setq lim (point))
+            (setq term-pos
+                  (or (c-next-single-property-change end 'c-type nil lim) lim))
+            (setq c-maybe-stale-found-type
+                  (list type marked-id
+                    type-pos term-pos
+                    (buffer-substring-no-properties type-pos
+                                    term-pos)
+                    (buffer-substring-no-properties beg end)))))))
 
-		(if c-get-state-before-change-functions
-		    (mapc (lambda (fn)
-			    (funcall fn beg end))
-			  c-get-state-before-change-functions))))
-	  (c-clear-string-fences))))
+        (if c-get-state-before-change-functions
+            (mapc (lambda (fn)
+                (funcall fn beg end))
+              c-get-state-before-change-functions))))
+      (c-clear-string-fences))))
     (c-truncate-lit-pos-cache beg)
     ;; The following must be done here rather than in `c-after-change'
     ;; because newly inserted parens would foul up the invalidation
@@ -2083,14 +2083,14 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
   (unless (c-called-from-text-property-change-p)
     (unless (eq c-just-done-before-change t)
       (save-restriction
-	(widen)
-	(when (null c-just-done-before-change)
-	  (c-before-change (point-min) (point-max)))
-	(setq beg (point-min)
-	      end (point-max)
-	      old-len (- end beg)
-	      c-new-BEG (point-min)
-	      c-new-END (point-max)))))
+    (widen)
+    (when (null c-just-done-before-change)
+      (c-before-change (point-min) (point-max)))
+    (setq beg (point-min)
+          end (point-max)
+          old-len (- end beg)
+          c-new-BEG (point-min)
+          c-new-END (point-max)))))
 
   ;; (c-new-BEG c-new-END) will be the region to fontify.  It may become
   ;; larger than (beg end).
@@ -2103,48 +2103,48 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
       ;; with regions outside the current narrowing.  This has been
       ;; observed in Emacs 20.7.
       (save-restriction
-	(save-match-data	  ; c-recognize-<>-arglists changes match-data
-	  (widen)
-	  (unwind-protect
-	      (progn
-		(c-restore-string-fences)
-		(when (> end (point-max))
-		  ;; Some emacsen might return positions past the end. This
-		  ;; has been observed in Emacs 20.7 when rereading a buffer
-		  ;; changed on disk (haven't been able to minimize it, but
-		  ;; Emacs 21.3 appears to work).
-		  (setq end (point-max))
-		  (when (> beg end)
-		    (setq beg end)))
+    (save-match-data      ; c-recognize-<>-arglists changes match-data
+      (widen)
+      (unwind-protect
+          (progn
+        (c-restore-string-fences)
+        (when (> end (point-max))
+          ;; Some emacsen might return positions past the end. This
+          ;; has been observed in Emacs 20.7 when rereading a buffer
+          ;; changed on disk (haven't been able to minimize it, but
+          ;; Emacs 21.3 appears to work).
+          (setq end (point-max))
+          (when (> beg end)
+            (setq beg end)))
 
-		;; C-y is capable of spuriously converting category
-		;; properties c-</>-as-paren-syntax and
-		;; c-cpp-delimiter into hard syntax-table properties.
-		;; Remove these when it happens.
-		(when (eval-when-compile (memq 'category-properties c-emacs-features))
-		  (c-save-buffer-state ()
-		    (c-clear-char-property-with-value beg end 'syntax-table
-						      c-<-as-paren-syntax)
-		    (c-clear-char-property-with-value beg end 'syntax-table
-						      c->-as-paren-syntax)
-		    (c-clear-char-property-with-value beg end 'syntax-table nil)))
+        ;; C-y is capable of spuriously converting category
+        ;; properties c-</>-as-paren-syntax and
+        ;; c-cpp-delimiter into hard syntax-table properties.
+        ;; Remove these when it happens.
+        (when (eval-when-compile (memq 'category-properties c-emacs-features))
+          (c-save-buffer-state ()
+            (c-clear-char-property-with-value beg end 'syntax-table
+                              c-<-as-paren-syntax)
+            (c-clear-char-property-with-value beg end 'syntax-table
+                              c->-as-paren-syntax)
+            (c-clear-char-property-with-value beg end 'syntax-table nil)))
 
-		(c-trim-found-types beg end old-len) ; maybe we don't
-						     ; need all of these.
-		(c-invalidate-sws-region-after beg end old-len)
-		;; (c-invalidate-state-cache beg) ; moved to
-		;; `c-before-change'.
-		(c-invalidate-find-decl-cache beg)
+        (c-trim-found-types beg end old-len) ; maybe we don't
+                             ; need all of these.
+        (c-invalidate-sws-region-after beg end old-len)
+        ;; (c-invalidate-state-cache beg) ; moved to
+        ;; `c-before-change'.
+        (c-invalidate-find-decl-cache beg)
 
-		(when c-recognize-<>-arglists
-		  (c-after-change-check-<>-operators beg end))
+        (when c-recognize-<>-arglists
+          (c-after-change-check-<>-operators beg end))
 
-		(setq c-in-after-change-fontification t)
-		(save-excursion
-		  (mapc (lambda (fn)
-			  (funcall fn beg end old-len))
-			c-before-font-lock-functions)))
-	    (c-clear-string-fences))))))
+        (setq c-in-after-change-fontification t)
+        (save-excursion
+          (mapc (lambda (fn)
+              (funcall fn beg end old-len))
+            c-before-font-lock-functions)))
+        (c-clear-string-fences))))))
   ;; A workaround for syntax-ppss's failure to notice syntax-table text
   ;; property changes.
   (when (fboundp 'syntax-ppss)
@@ -2159,13 +2159,13 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
     (goto-char pos)
     (back-to-indentation)
     (and (or (looking-at c-comment-start-regexp)
-	     (memq (c-literal-type (c-literal-limits)) '(c c++)))
-	 (progn
-	   (end-of-line)
-	   (let ((here (point)))
-	     (while (re-search-backward c-doc-line-join-re (c-point 'bopl) t))
-	     (and (not (eq (point) here))
-		  (c-point 'bol)))))))
+         (memq (c-literal-type (c-literal-limits)) '(c c++)))
+     (progn
+       (end-of-line)
+       (let ((here (point)))
+         (while (re-search-backward c-doc-line-join-re (c-point 'bopl) t))
+         (and (not (eq (point) here))
+          (c-point 'bol)))))))
 
 (defun c-doc-fl-decl-end (pos)
   ;; If the line containing POS is continued by a doc comment continuation
@@ -2178,7 +2178,7 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
     (let ((here (point)))
       (while (re-search-forward c-doc-line-join-re (c-point 'eonl) t))
       (and (not (eq (point) here))
-	   (c-point 'bonl)))))
+       (c-point 'bonl)))))
 
 (defun c-fl-decl-start (pos)
   ;; If the beginning of the line containing POS is in the middle of a "local"
@@ -2195,10 +2195,10 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
   ;; lock context (etc.) fontification.
   (goto-char pos)
   (let ((lit-start (c-literal-start))
-	old-pos
-	(new-pos pos)
-	capture-opener
-	bod-lim bo-decl)
+    old-pos
+    (new-pos pos)
+    capture-opener
+    bod-lim bo-decl)
     (goto-char (c-point 'bol new-pos))
     (unless lit-start
       (setq bod-lim (c-determine-limit 500))
@@ -2206,61 +2206,61 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
       ;; In C++ Mode, first check if we are within a (possibly nested) lambda
       ;; form capture list.
       (when (c-major-mode-is 'c++-mode)
-	(save-excursion
-	  (while (and (c-go-up-list-backward nil bod-lim)
-		      (c-looking-at-c++-lambda-capture-list))
-	    (setq capture-opener (point)))))
+    (save-excursion
+      (while (and (c-go-up-list-backward nil bod-lim)
+              (c-looking-at-c++-lambda-capture-list))
+        (setq capture-opener (point)))))
 
       (while
-	  ;; Go to a less nested declaration each time round this loop.
-	  (and
-	   (setq old-pos (point))
-	   (let (pseudo)
-	     (while
-		 (progn
-		   (c-syntactic-skip-backward "^;{}" bod-lim t)
-		   (and (eq (char-before) ?})
-			(save-excursion
-			  (backward-char)
-			  (setq pseudo (c-cheap-inside-bracelist-p (c-parse-state))))))
-	       (goto-char pseudo))
-	     t)
-	   (> (point) bod-lim)
-	   (progn (c-forward-syntactic-ws)
-		  ;; Have we got stuck in a comment at EOB?
-		  (not (and (eobp)
-			    (c-literal-start))))
-	   (< (point) old-pos)
-	   (progn (setq bo-decl (point))
-		  (or (not (looking-at c-protection-key))
-		      (c-forward-keyword-clause 1)))
-	   (progn
-	     ;; Are we looking at a keyword such as "template" or
-	     ;; "typedef" which can decorate a type, or the type itself?
-	     (when (or (looking-at c-prefix-spec-kwds-re)
-		       (c-forward-type t))
-	       ;; We've found another candidate position.
-	       (setq new-pos (min new-pos bo-decl))
-	       (goto-char bo-decl))
-	     t)
-	   ;; Try and go out a level to search again.
-	   (progn
-	     (c-backward-syntactic-ws bod-lim)
-	     (and (> (point) bod-lim)
-		  (or (memq (char-before) '(?\( ?\[))
-		      (and (eq (char-before) ?\<)
-			   (eq (c-get-char-property
-				(1- (point)) 'syntax-table)
-			       c-<-as-paren-syntax))
-		      (and (eq (char-before) ?{)
-			   (save-excursion
-			     (backward-char)
-			     (consp (c-looking-at-or-maybe-in-bracelist))))
-		      )))
-	   (not (bobp)))
-	(backward-char))		; back over (, [, <.
+      ;; Go to a less nested declaration each time round this loop.
+      (and
+       (setq old-pos (point))
+       (let (pseudo)
+         (while
+         (progn
+           (c-syntactic-skip-backward "^;{}" bod-lim t)
+           (and (eq (char-before) ?})
+            (save-excursion
+              (backward-char)
+              (setq pseudo (c-cheap-inside-bracelist-p (c-parse-state))))))
+           (goto-char pseudo))
+         t)
+       (> (point) bod-lim)
+       (progn (c-forward-syntactic-ws)
+          ;; Have we got stuck in a comment at EOB?
+          (not (and (eobp)
+                (c-literal-start))))
+       (< (point) old-pos)
+       (progn (setq bo-decl (point))
+          (or (not (looking-at c-protection-key))
+              (c-forward-keyword-clause 1)))
+       (progn
+         ;; Are we looking at a keyword such as "template" or
+         ;; "typedef" which can decorate a type, or the type itself?
+         (when (or (looking-at c-prefix-spec-kwds-re)
+               (c-forward-type t))
+           ;; We've found another candidate position.
+           (setq new-pos (min new-pos bo-decl))
+           (goto-char bo-decl))
+         t)
+       ;; Try and go out a level to search again.
+       (progn
+         (c-backward-syntactic-ws bod-lim)
+         (and (> (point) bod-lim)
+          (or (memq (char-before) '(?\( ?\[))
+              (and (eq (char-before) ?\<)
+               (eq (c-get-char-property
+                (1- (point)) 'syntax-table)
+                   c-<-as-paren-syntax))
+              (and (eq (char-before) ?{)
+               (save-excursion
+                 (backward-char)
+                 (consp (c-looking-at-or-maybe-in-bracelist))))
+              )))
+       (not (bobp)))
+    (backward-char))        ; back over (, [, <.
       (when (and capture-opener (< capture-opener new-pos))
-	(setq new-pos capture-opener))
+    (setq new-pos capture-opener))
       (and (/= new-pos pos) new-pos))))
 
 (defun c-fl-decl-end (pos)
@@ -2270,41 +2270,41 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
   ;; preserved.
   (goto-char pos)
   (let ((lit-start (c-literal-start))
-	enclosing-attribute pos1)
+    enclosing-attribute pos1)
     (unless lit-start
       (c-backward-syntactic-ws)
       (when (setq enclosing-attribute (c-enclosing-c++-attribute))
-	(goto-char (car enclosing-attribute))) ; Only happens in C++ Mode.
+    (goto-char (car enclosing-attribute))) ; Only happens in C++ Mode.
       (when (setq pos1 (c-on-identifier))
-	(goto-char pos1)
-	(let ((lim (save-excursion
-		     (and (c-beginning-of-macro)
-			  (progn (c-end-of-macro) (point))))))
-	  (and (c-forward-declarator lim)
-	       (if (eq (char-after) ?\()
-		   (and
-		    (c-go-list-forward nil lim)
-		    (progn (c-forward-syntactic-ws lim)
-			   (not (eobp)))
-		    (progn
-		      (if (looking-at c-symbol-char-key)
-			  ;; Deal with baz (foo((bar)) type var), where
-			  ;; foo((bar)) is not semantically valid.  The result
-			  ;; must be after var).
-			  (and
-			   (goto-char pos)
-			   (setq pos1 (c-on-identifier))
-			   (goto-char pos1)
-			   (progn
-			     (c-backward-syntactic-ws)
-			     (eq (char-before) ?\())
-			   (c-fl-decl-end (1- (point))))
-			(c-backward-syntactic-ws)
-			(point))))
-		 (and (progn (c-forward-syntactic-ws lim)
-			     (not (eobp)))
-		      (c-backward-syntactic-ws)
-		      (point)))))))))
+    (goto-char pos1)
+    (let ((lim (save-excursion
+             (and (c-beginning-of-macro)
+              (progn (c-end-of-macro) (point))))))
+      (and (c-forward-declarator lim)
+           (if (eq (char-after) ?\()
+           (and
+            (c-go-list-forward nil lim)
+            (progn (c-forward-syntactic-ws lim)
+               (not (eobp)))
+            (progn
+              (if (looking-at c-symbol-char-key)
+              ;; Deal with baz (foo((bar)) type var), where
+              ;; foo((bar)) is not semantically valid.  The result
+              ;; must be after var).
+              (and
+               (goto-char pos)
+               (setq pos1 (c-on-identifier))
+               (goto-char pos1)
+               (progn
+                 (c-backward-syntactic-ws)
+                 (eq (char-before) ?\())
+               (c-fl-decl-end (1- (point))))
+            (c-backward-syntactic-ws)
+            (point))))
+         (and (progn (c-forward-syntactic-ws lim)
+                 (not (eobp)))
+              (c-backward-syntactic-ws)
+              (point)))))))))
 
 (defun c-change-expand-fl-region (_beg _end _old-len)
   ;; Expand the region (c-new-BEG c-new-END) to an after-change font-lock
@@ -2317,11 +2317,11 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
   ;; and OLD-LEN are not used.
   (if font-lock-mode
       (setq c-new-BEG
-	    (or (c-fl-decl-start c-new-BEG) (c-doc-fl-decl-start c-new-BEG)
-		(c-point 'bol c-new-BEG))
-	    c-new-END
-	    (or (c-fl-decl-end c-new-END) (c-doc-fl-decl-end c-new-END)
-		(c-point 'bonl c-new-END)))))
+        (or (c-fl-decl-start c-new-BEG) (c-doc-fl-decl-start c-new-BEG)
+        (c-point 'bol c-new-BEG))
+        c-new-END
+        (or (c-fl-decl-end c-new-END) (c-doc-fl-decl-end c-new-END)
+        (c-point 'bonl c-new-END)))))
 
 (defun c-context-expand-fl-region (beg end)
   ;; Return a cons (NEW-BEG . NEW-END), where NEW-BEG is the beginning of a
@@ -2329,9 +2329,9 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
   ;; in.  NEW-END is beginning of the line after the one END is in.
   (c-save-buffer-state ()
     (cons (or (c-fl-decl-start beg) (c-doc-fl-decl-start beg)
-	      (c-point 'bol beg))
-	  (or (c-fl-decl-end end) (c-doc-fl-decl-end end)
-	      (c-point 'bonl (1- end))))))
+          (c-point 'bol beg))
+      (or (c-fl-decl-end end) (c-doc-fl-decl-end end)
+          (c-point 'bonl (1- end))))))
 
 (defun c-before-context-fl-expand-region (beg end)
   ;; Expand the region (BEG END) as specified by
@@ -2341,12 +2341,12 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
     (widen)
     (save-excursion
       (let ((new-beg beg) (new-end end)
-	    (new-region (cons beg end)))
-	(mapc (lambda (fn)
-		(setq new-region (funcall fn new-beg new-end))
-		(setq new-beg (car new-region) new-end (cdr new-region)))
-	      c-before-context-fontification-functions)
-	new-region))))
+        (new-region (cons beg end)))
+    (mapc (lambda (fn)
+        (setq new-region (funcall fn new-beg new-end))
+        (setq new-beg (car new-region) new-end (cdr new-region)))
+          c-before-context-fontification-functions)
+    new-region))))
 
 (defun c-font-lock-fontify-region (beg end &optional verbose)
   ;; Effectively advice around `font-lock-fontify-region' which extends the
@@ -2366,46 +2366,46 @@ Note that this is a strict tail, so won't match, e.g. \"0x....\".")
     (widen)
     (let (new-beg new-end new-region case-fold-search)
       (c-save-buffer-state nil
-	;; Temporarily reapply the string fence syntax-table properties.
-	(unwind-protect
-	    (progn
-	      (c-restore-string-fences)
-	      (if (and c-in-after-change-fontification
-		       (< beg c-new-END) (> end c-new-BEG))
-		  ;; Region and the latest after-change fontification region overlap.
-		  ;; Determine the upper and lower bounds of our adjusted region
-		  ;; separately.
-		  (progn
-		    (if (<= beg c-new-BEG)
-			(setq c-in-after-change-fontification nil))
-		    (setq new-beg
-			  (if (and (>= beg (c-point 'bol c-new-BEG))
-				   (<= beg c-new-BEG))
-			      ;; Either jit-lock has accepted `c-new-BEG', or has
-			      ;; (probably) extended the change region spuriously
-			      ;; to BOL, which position likely has a
-			      ;; syntactically different position.  To ensure
-			      ;; correct fontification, we start at `c-new-BEG',
-			      ;; assuming any characters to the left of
-			      ;; `c-new-BEG' on the line do not require
-			      ;; fontification.
-			      c-new-BEG
-			    (setq new-region (c-before-context-fl-expand-region beg end)
-				  new-end (cdr new-region))
-			    (car new-region)))
-		    (setq new-end
-			  (if (and (>= end (c-point 'bol c-new-END))
-				   (<= end c-new-END))
-			      c-new-END
-			    (or new-end
-				(cdr (c-before-context-fl-expand-region beg end))))))
-		;; Context (etc.) fontification.
-		(setq new-region (c-before-context-fl-expand-region beg end)
-		      new-beg (car new-region)  new-end (cdr new-region)))
-	      ;; Finally invoke font lock's functionality.
-	      (funcall (default-value 'font-lock-fontify-region-function)
-		       new-beg new-end verbose))
-	  (c-clear-string-fences))))))
+    ;; Temporarily reapply the string fence syntax-table properties.
+    (unwind-protect
+        (progn
+          (c-restore-string-fences)
+          (if (and c-in-after-change-fontification
+               (< beg c-new-END) (> end c-new-BEG))
+          ;; Region and the latest after-change fontification region overlap.
+          ;; Determine the upper and lower bounds of our adjusted region
+          ;; separately.
+          (progn
+            (if (<= beg c-new-BEG)
+            (setq c-in-after-change-fontification nil))
+            (setq new-beg
+              (if (and (>= beg (c-point 'bol c-new-BEG))
+                   (<= beg c-new-BEG))
+                  ;; Either jit-lock has accepted `c-new-BEG', or has
+                  ;; (probably) extended the change region spuriously
+                  ;; to BOL, which position likely has a
+                  ;; syntactically different position.  To ensure
+                  ;; correct fontification, we start at `c-new-BEG',
+                  ;; assuming any characters to the left of
+                  ;; `c-new-BEG' on the line do not require
+                  ;; fontification.
+                  c-new-BEG
+                (setq new-region (c-before-context-fl-expand-region beg end)
+                  new-end (cdr new-region))
+                (car new-region)))
+            (setq new-end
+              (if (and (>= end (c-point 'bol c-new-END))
+                   (<= end c-new-END))
+                  c-new-END
+                (or new-end
+                (cdr (c-before-context-fl-expand-region beg end))))))
+        ;; Context (etc.) fontification.
+        (setq new-region (c-before-context-fl-expand-region beg end)
+              new-beg (car new-region)  new-end (cdr new-region)))
+          ;; Finally invoke font lock's functionality.
+          (funcall (default-value 'font-lock-fontify-region-function)
+               new-beg new-end verbose))
+      (c-clear-string-fences))))))
 
 (defun c-after-font-lock-init ()
   ;; Put on `font-lock-mode-hook'.  This function ensures our after-change
@@ -2421,17 +2421,17 @@ This does not load the font-lock package.  Use after
 This function is called from `c-common-init', once per mode initialization."
 
   (set (make-local-variable 'font-lock-defaults)
-	`(,(if (c-major-mode-is 'awk-mode)
-	       ;; awk-mode currently has only one font lock level.
-	       'awk-font-lock-keywords
-	     (mapcar 'c-mode-symbol
-		     '("font-lock-keywords" "font-lock-keywords-1"
-		       "font-lock-keywords-2" "font-lock-keywords-3")))
-	  nil nil
-	  ,c-identifier-syntax-modifications
-	  c-beginning-of-syntax
-	  (font-lock-mark-block-function
-	   . c-mark-function)))
+    `(,(if (c-major-mode-is 'awk-mode)
+           ;; awk-mode currently has only one font lock level.
+           'awk-font-lock-keywords
+         (mapcar 'c-mode-symbol
+             '("font-lock-keywords" "font-lock-keywords-1"
+               "font-lock-keywords-2" "font-lock-keywords-3")))
+      nil nil
+      ,c-identifier-syntax-modifications
+      c-beginning-of-syntax
+      (font-lock-mark-block-function
+       . c-mark-function)))
 
   ;; Prevent `font-lock-default-fontify-region' extending the region it will
   ;; fontify to whole lines by removing `font-lock-extend-region-wholelines'
@@ -2439,8 +2439,8 @@ This function is called from `c-common-init', once per mode initialization."
   ;; Emacs bug #19669.
   (when (boundp 'font-lock-extend-region-functions)
     (setq font-lock-extend-region-functions
-	  (delq 'font-lock-extend-region-wholelines
-		font-lock-extend-region-functions)))
+      (delq 'font-lock-extend-region-wholelines
+        font-lock-extend-region-functions)))
 
   (make-local-variable 'font-lock-fontify-region-function)
   (setq font-lock-fontify-region-function 'c-font-lock-fontify-region)
@@ -2465,10 +2465,10 @@ This function is called from `c-common-init', once per mode initialization."
     (save-restriction
       (widen)
       (c-save-buffer-state () ; Protect the undo-list from put-text-property.
-	(if (< c-new-BEG beg)
-	    (put-text-property c-new-BEG beg 'fontified nil))
-	(if (> c-new-END end)
-	    (put-text-property end c-new-END 'fontified nil)))))
+    (if (< c-new-BEG beg)
+        (put-text-property c-new-BEG beg 'fontified nil))
+    (if (> c-new-END end)
+        (put-text-property end c-new-END 'fontified nil)))))
   (cons c-new-BEG c-new-END))
 
 ;; Emacs < 22 and XEmacs
@@ -2477,8 +2477,8 @@ This function is called from `c-common-init', once per mode initialization."
      ;; Make sure that any string/regexp is completely font-locked.
      (when c-buffer-is-cc-mode
        (save-excursion
-	 (ad-set-arg 1 c-new-END)   ; end
-	 (ad-set-arg 0 c-new-BEG)))))	; beg
+     (ad-set-arg 1 c-new-END)   ; end
+     (ad-set-arg 0 c-new-BEG)))))   ; beg
 
 (unless (boundp 'font-lock-extend-after-change-region-function)
   (c-advise-fl-for-region font-lock-after-change-function)
@@ -2541,7 +2541,7 @@ opening \" and the next unescaped end of line."
 
 
 (easy-menu-define c-c-menu c-mode-map "C Mode Commands"
-		  (cons "C" (c-lang-const c-mode-menu c)))
+          (cons "C" (c-lang-const c-mode-menu c)))
 
 ;; In XEmacs >= 21.5 modes should add their own entries to
 ;; `auto-mode-alist'.  The comment form of autoload is used to avoid
@@ -2591,8 +2591,8 @@ initialization, then `c-mode-hook'.
 Key bindings:
 \\{c-mode-map}"
   :after-hook (progn (c-make-noise-macro-regexps)
-		     (c-make-macro-with-semi-re)
-		     (c-update-modeline))
+             (c-make-macro-with-semi-re)
+             (c-update-modeline))
   (c-initialize-cc-mode t)
   (setq abbrev-mode t)
   (c-init-language-vars-for 'c-mode)
@@ -2663,7 +2663,7 @@ the code is C or C++ and based on that chooses whether to enable
 (define-key c++-mode-map ">"        'c-electric-lt-gt)
 
 (easy-menu-define c-c++-menu c++-mode-map "C++ Mode Commands"
-		  (cons "C++" (c-lang-const c-mode-menu c++)))
+          (cons "C++" (c-lang-const c-mode-menu c++)))
 
 ;;;###autoload
 (define-derived-mode c++-mode prog-mode "C++"
@@ -2682,8 +2682,8 @@ initialization, then `c++-mode-hook'.
 Key bindings:
 \\{c++-mode-map}"
   :after-hook (progn (c-make-noise-macro-regexps)
-		     (c-make-macro-with-semi-re)
-		     (c-update-modeline))
+             (c-make-macro-with-semi-re)
+             (c-update-modeline))
   (c-initialize-cc-mode t)
   (setq abbrev-mode t)
   (c-init-language-vars-for 'c++-mode)
@@ -2708,7 +2708,7 @@ Key bindings:
 (define-key objc-mode-map "\C-c\C-e" 'c-macro-expand)
 
 (easy-menu-define c-objc-menu objc-mode-map "ObjC Mode Commands"
-		  (cons "ObjC" (c-lang-const c-mode-menu objc)))
+          (cons "ObjC" (c-lang-const c-mode-menu objc)))
 
 ;;;###autoload (add-to-list 'auto-mode-alist '("\\.m\\'" . objc-mode))
 
@@ -2729,8 +2729,8 @@ initialization, then `objc-mode-hook'.
 Key bindings:
 \\{objc-mode-map}"
   :after-hook (progn (c-make-noise-macro-regexps)
-		     (c-make-macro-with-semi-re)
-		     (c-update-modeline))
+             (c-make-macro-with-semi-re)
+             (c-update-modeline))
   (c-initialize-cc-mode t)
   (setq abbrev-mode t)
   (c-init-language-vars-for 'objc-mode)
@@ -2760,7 +2760,7 @@ Key bindings:
   "^[ \t]*\\(\\(\\(public\\|protected\\|private\\|const\\|abstract\\|synchronized\\|final\\|static\\|threadsafe\\|transient\\|native\\|volatile\\)\\s-+\\)*\\(\\(\\([[a-zA-Z][][_$.a-zA-Z0-9]+\\|[[a-zA-Z]\\)\\s-*\\)\\s-+\\)\\)?\\(\\([[a-zA-Z][][_$.a-zA-Z0-9]*\\s-+\\)\\s-*\\)?\\([_a-zA-Z][^][ \t:;.,{}()\^?=]*\\|\\([_$a-zA-Z][_$.a-zA-Z0-9]*\\)\\)\\s-*\\(([^);{}]*)\\)?\\([] \t]*\\)\\(\\s-*\\<throws\\>\\s-*\\(\\([_$a-zA-Z][_$.a-zA-Z0-9]*\\)[, \t\n\r\f\v]*\\)+\\)?\\s-*")
 
 (easy-menu-define c-java-menu java-mode-map "Java Mode Commands"
-		  (cons "Java" (c-lang-const c-mode-menu java)))
+          (cons "Java" (c-lang-const c-mode-menu java)))
 
 ;;;###autoload (add-to-list 'auto-mode-alist '("\\.java\\'" . java-mode))
 
@@ -2803,7 +2803,7 @@ Key bindings:
 ;; Add bindings which are only useful for IDL.
 
 (easy-menu-define c-idl-menu idl-mode-map "IDL Mode Commands"
-		  (cons "IDL" (c-lang-const c-mode-menu idl)))
+          (cons "IDL" (c-lang-const c-mode-menu idl)))
 
 ;;;###autoload (add-to-list 'auto-mode-alist '("\\.idl\\'" . idl-mode))
 
@@ -2846,7 +2846,7 @@ Key bindings:
 (define-key pike-mode-map "\C-c\C-e" 'c-macro-expand)
 
 (easy-menu-define c-pike-menu pike-mode-map "Pike Mode Commands"
-		  (cons "Pike" (c-lang-const c-mode-menu pike)))
+          (cons "Pike" (c-lang-const c-mode-menu pike)))
 
 ;;;###autoload (add-to-list 'auto-mode-alist '("\\.\\(u?lpc\\|pike\\|pmod\\(\\.in\\)?\\)\\'" . pike-mode))
 ;;;###autoload (add-to-list 'interpreter-mode-alist '("pike" . pike-mode))
@@ -2869,7 +2869,7 @@ Key bindings:
 \\{pike-mode-map}"
   :after-hook (c-update-modeline)
   (c-initialize-cc-mode t)
-  (setq	abbrev-mode t)
+  (setq abbrev-mode t)
   (c-init-language-vars-for 'pike-mode)
   (c-common-init 'pike-mode)
   (easy-menu-add c-pike-menu)
@@ -2902,7 +2902,7 @@ Key bindings:
 (define-key awk-mode-map "\C-\M-e" 'c-awk-end-of-defun)
 
 (easy-menu-define c-awk-menu awk-mode-map "AWK Mode Commands"
-		  (cons "AWK" (c-lang-const c-mode-menu awk)))
+          (cons "AWK" (c-lang-const c-mode-menu awk)))
 
 ;; (require 'cc-awk) brings these in.
 (defvar awk-mode-syntax-table)
@@ -2928,10 +2928,10 @@ Key bindings:
   ;; `awk-mode-syntax-table'.  This would mask the real table which is
   ;; declared in cc-awk.el and hasn't yet been loaded.
   :syntax-table nil
-  (require 'cc-awk)			; Added 2003/6/10.
+  (require 'cc-awk)         ; Added 2003/6/10.
   (c-initialize-cc-mode t)
   (set-syntax-table awk-mode-syntax-table)
-  (setq	abbrev-mode t)
+  (setq abbrev-mode t)
   (c-init-language-vars-for 'awk-mode)
   (c-common-init 'awk-mode)
   (c-awk-unstick-NL-prop)
@@ -2972,85 +2972,85 @@ Key bindings:
   (require 'reporter)
   ;; load in reporter
   (let ((reporter-prompt-for-summary-p t)
-	(reporter-dont-compact-list '(c-offsets-alist))
-	(style c-indentation-style)
-	(c-features c-emacs-features))
+    (reporter-dont-compact-list '(c-offsets-alist))
+    (style c-indentation-style)
+    (c-features c-emacs-features))
     (and
      (if (y-or-n-p "Do you want to submit a report on CC Mode? ")
-	 t (message "") nil)
+     t (message "") nil)
      (reporter-submit-bug-report
       c-mode-help-address
       (concat "CC Mode " c-version " (" mode-name ")")
       (let ((vars (append
-		   c-style-variables
-		   '(c-buffer-is-cc-mode
-		     c-tab-always-indent
-		     c-syntactic-indentation
-		     c-syntactic-indentation-in-macros
-		     c-ignore-auto-fill
-		     c-auto-align-backslashes
-		     c-backspace-function
-		     c-delete-function
-		     c-electric-pound-behavior
-		     c-default-style
-		     c-enable-xemacs-performance-kludge-p
-		     c-old-style-variable-behavior
-		     defun-prompt-regexp
-		     tab-width
-		     comment-column
-		     parse-sexp-ignore-comments
-		     parse-sexp-lookup-properties
-		     lookup-syntax-properties
-		     ;; A brain-damaged XEmacs only variable that, if
-		     ;; set to nil can cause all kinds of chaos.
-		     signal-error-on-buffer-boundary
-		     ;; Variables that affect line breaking and comments.
-		     auto-fill-mode
-		     auto-fill-function
-		     filladapt-mode
-		     comment-multi-line
-		     comment-start-skip
-		     fill-prefix
-		     fill-column
-		     paragraph-start
-		     adaptive-fill-mode
-		     adaptive-fill-regexp)
-		   nil)))
-	(mapc (lambda (var) (unless (boundp var)
+           c-style-variables
+           '(c-buffer-is-cc-mode
+             c-tab-always-indent
+             c-syntactic-indentation
+             c-syntactic-indentation-in-macros
+             c-ignore-auto-fill
+             c-auto-align-backslashes
+             c-backspace-function
+             c-delete-function
+             c-electric-pound-behavior
+             c-default-style
+             c-enable-xemacs-performance-kludge-p
+             c-old-style-variable-behavior
+             defun-prompt-regexp
+             tab-width
+             comment-column
+             parse-sexp-ignore-comments
+             parse-sexp-lookup-properties
+             lookup-syntax-properties
+             ;; A brain-damaged XEmacs only variable that, if
+             ;; set to nil can cause all kinds of chaos.
+             signal-error-on-buffer-boundary
+             ;; Variables that affect line breaking and comments.
+             auto-fill-mode
+             auto-fill-function
+             filladapt-mode
+             comment-multi-line
+             comment-start-skip
+             fill-prefix
+             fill-column
+             paragraph-start
+             adaptive-fill-mode
+             adaptive-fill-regexp)
+           nil)))
+    (mapc (lambda (var) (unless (boundp var)
                          (setq vars (delq var vars))))
-	      '(signal-error-on-buffer-boundary
-		filladapt-mode
-		defun-prompt-regexp
-		font-lock-mode
-		auto-fill-mode
-		font-lock-maximum-decoration
-		parse-sexp-lookup-properties
-		lookup-syntax-properties))
-	vars)
+          '(signal-error-on-buffer-boundary
+        filladapt-mode
+        defun-prompt-regexp
+        font-lock-mode
+        auto-fill-mode
+        font-lock-maximum-decoration
+        parse-sexp-lookup-properties
+        lookup-syntax-properties))
+    vars)
       (lambda ()
-	(run-hooks 'c-prepare-bug-report-hook)
-	(let ((hook (get mail-user-agent 'hookvar)))
-	  (if hook
-	      (add-hook hook
-			(lambda ()
-			  (save-excursion
-			    (mail-text)
-			    (unless (looking-at "Package: ")
-			      (insert "Package: " c-mode-bug-package "\n\n"))))
-			nil t)))
-	(save-excursion
-	  (or (mail-position-on-field "X-Debbugs-Package")
-	      (insert c-mode-bug-package))
-	  ;; For mail clients that do not support X- headers.
-	  ;; Sadly reporter-submit-bug-report unconditionally adds
-	  ;; a blank line before SALUTATION, so we can't use that.
-	  ;; It is also sad that reporter offers no way to leave point
-	  ;; after this line we are now inserting.
-	  (mail-text)
-	  (or (looking-at "Package:")
-	      (insert "Package: " c-mode-bug-package)))
-	(insert (format "Buffer Style: %s\nc-emacs-features: %s\n"
-			style c-features)))))))
+    (run-hooks 'c-prepare-bug-report-hook)
+    (let ((hook (get mail-user-agent 'hookvar)))
+      (if hook
+          (add-hook hook
+            (lambda ()
+              (save-excursion
+                (mail-text)
+                (unless (looking-at "Package: ")
+                  (insert "Package: " c-mode-bug-package "\n\n"))))
+            nil t)))
+    (save-excursion
+      (or (mail-position-on-field "X-Debbugs-Package")
+          (insert c-mode-bug-package))
+      ;; For mail clients that do not support X- headers.
+      ;; Sadly reporter-submit-bug-report unconditionally adds
+      ;; a blank line before SALUTATION, so we can't use that.
+      ;; It is also sad that reporter offers no way to leave point
+      ;; after this line we are now inserting.
+      (mail-text)
+      (or (looking-at "Package:")
+          (insert "Package: " c-mode-bug-package)))
+    (insert (format "Buffer Style: %s\nc-emacs-features: %s\n"
+            style c-features)))))))
 
 
 (cc-provide 'cc-mode)

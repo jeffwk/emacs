@@ -979,12 +979,22 @@ be reported.
 If NO-ERROR is nil, signal an error that no VC backend is
 responsible for the given file."
   (or (and (not (file-directory-p file)) (vc-backend file))
-      (catch 'found
-	;; First try: find a responsible backend.  If this is for registration,
-	;; it must be a backend under which FILE is not yet registered.
-	(dolist (backend vc-handled-backends)
-	  (and (vc-call-backend backend 'responsible-p file)
-	       (throw 'found backend))))
+      ;; First try: find a responsible backend.  If this is for registration,
+      ;; it must be a backend under which FILE is not yet registered.
+      (let ((dirs (delq nil
+                        (mapcar
+                         (lambda (backend)
+                           (when-let ((dir (vc-call-backend
+                                            backend 'responsible-p file)))
+                             (cons backend dir)))
+                         vc-handled-backends))))
+        ;; Just a single response (or none); use it.
+        (if (< (length dirs) 2)
+            (caar dirs)
+          ;; Several roots; we seem to have one vc inside another's
+          ;; directory.  Choose the most specific.
+          (caar (sort dirs (lambda (d1 d2)
+                             (< (length (cdr d2)) (length (cdr d1))))))))
       (unless no-error
         (error "No VC backend is responsible for %s" file))))
 
@@ -1035,7 +1045,7 @@ requesting the fileset doesn't intend to change the VC state,
 such as when printing the log or showing the diffs.
 
 If the current buffer is in `vc-dir' or Dired mode, FILESET is the
-list of marked files, or the current directory if no files are
+list of marked files, or the file under point if no files are
 marked.
 Otherwise, if the current buffer is visiting a version-controlled
 file or is an indirect buffer whose base buffer visits a
@@ -1381,7 +1391,7 @@ first backend that could register the file is used."
 	(unless fname
 	  (setq fname buffer-file-name))
 	(when (vc-call-backend backend 'registered fname)
-	  (error "This file is already registered"))
+	  (error "This file is already registered: %s" fname))
 	;; Watch out for new buffers of size 0: the corresponding file
 	;; does not exist yet, even though buffer-modified-p is nil.
 	(when bname

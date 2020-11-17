@@ -324,9 +324,9 @@ Leaving \"Default\" unchecked is equivalent with specifying a default of
              (resize-mini-frames
               frames (choice
                       (const :tag "Never" nil)
-                      (const :tag "Fit frame to buffer" t)
+                      (const :tag "Fit mini frame to buffer" t)
                       (function :tag "User-defined function"))
-               "27.1")
+               "27.2")
              (menu-bar-mode frames boolean nil
 			    ;; FIXME?
                             ;; :initialize custom-initialize-default
@@ -394,6 +394,7 @@ Leaving \"Default\" unchecked is equivalent with specifying a default of
 	     ;;    			(directory :format "%v"))))
 	     (load-prefer-newer lisp boolean "24.4")
 	     ;; minibuf.c
+             (minibuffer-follows-selected-frame minibuffer boolean "28.1")
 	     (enable-recursive-minibuffers minibuffer boolean)
 	     (history-length minibuffer
 			     (choice (const :tag "Infinite" t) integer)
